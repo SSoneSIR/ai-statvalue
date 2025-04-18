@@ -14,33 +14,57 @@ import {
 } from "../../components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
-import { login } from "../api/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 
-interface LoginError {
-  error: string;
-}
+// Create motion components using the same API as in your register page
+const MotionCard = motion(Card);
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string>("");
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  interface FormDataState {
+    username: string;
+    password: string;
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev: FormDataState) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
+  interface LoginError {
+    error: string;
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
-      await login(username, password);
+      await login(formData.username, formData.password);
       router.push("/"); // Redirect to home page after successful login
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else if (typeof err === "object" && err !== null && "error" in err) {
-        setError((err as { error: string }).error);
+        setError((err as LoginError).error);
       } else {
         setError("An unexpected error occurred during login");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -67,8 +91,6 @@ export default function LoginPage() {
     },
   };
 
-  const MotionCard = motion(Card);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <motion.div
@@ -86,8 +108,8 @@ export default function LoginPage() {
               <Image
                 src="/login.png"
                 alt="Login illustration"
-                layout="fill"
-                objectFit="cover"
+                fill
+                className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
               />
@@ -111,8 +133,8 @@ export default function LoginPage() {
                       id="username"
                       type="text"
                       placeholder="Enter your username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      value={formData.username}
+                      onChange={handleChange}
                       required
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -125,8 +147,8 @@ export default function LoginPage() {
                       id="password"
                       type="password"
                       placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      value={formData.password}
+                      onChange={handleChange}
                       required
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -139,8 +161,9 @@ export default function LoginPage() {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-300"
+                      disabled={isSubmitting}
                     >
-                      Login
+                      {isSubmitting ? "Logging in..." : "Login"}
                     </Button>
                   </motion.div>
                 </form>

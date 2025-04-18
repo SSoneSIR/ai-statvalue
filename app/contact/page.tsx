@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import emailjs from "emailjs-com";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
@@ -21,38 +22,11 @@ import {
   Lock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-// Mock auth function - replace with your actual auth implementation
-const useAuth = () => {
-  // Replace this with your actual auth state
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<{ username: string } | null>(null);
-
-  // Simulate fetching auth state
-  useEffect(() => {
-    // Replace this with your actual auth check
-    const checkAuth = async () => {
-      // This is just a placeholder - implement your actual auth check
-      try {
-        // For example: const response = await fetch('/api/auth/me');
-        // const data = await response.json();
-        // For demo purposes, uncomment to simulate logged in state:
-        // setIsLoggedIn(true);
-        // setUser({ username: "DemoUser" });
-      } catch (error) {
-        console.error("Auth check failed:", error);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  return { isLoggedIn, user };
-};
+import { useAuth } from "../context/AuthContext";
 
 export default function ContactPage() {
   const router = useRouter();
-  const { isLoggedIn, user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -64,8 +38,9 @@ export default function ContactPage() {
   const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(
     null
   );
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // Set the name field to user's username when component mounts and user is logged in
+  // Set the user data when available
   useEffect(() => {
     if (user?.username) {
       setFormData((prev) => ({
@@ -73,13 +48,13 @@ export default function ContactPage() {
         name: user.username,
       }));
     }
+    if (user?.email) {
+      setFormData((prev) => ({
+        ...prev,
+        email: user.email,
+      }));
+    }
   }, [user]);
-
-  interface FormData {
-    name: string;
-    email: string;
-    message: string;
-  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -91,17 +66,42 @@ export default function ContactPage() {
     }));
   };
 
-  interface SubmitEvent extends React.FormEvent<HTMLFormElement> {}
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setErrorMessage("Name is required");
+      return false;
+    }
 
-  const handleSubmit = async (e: SubmitEvent): Promise<void> => {
+    if (!formData.email.trim()) {
+      setErrorMessage("Email is required");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Please enter a valid email address");
+      return false;
+    }
+
+    if (!formData.message.trim()) {
+      setErrorMessage("Message is required");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isLoggedIn) {
-      router.push("/login"); // Redirect to login page
+    if (!isAuthenticated) {
+      router.push("/login");
       return;
     }
 
-    if (!formData.name || !formData.email || !formData.message) {
+    setErrorMessage("");
+
+    if (!validateForm()) {
       setSubmitStatus("error");
       return;
     }
@@ -109,47 +109,32 @@ export default function ContactPage() {
     setIsSubmitting(true);
 
     try {
-      // Using mailto protocol as a simple solution
-      const mailtoLink = `mailto:yashaswanyashu@gmail.com?subject=Contact Form Submission from ${encodeURIComponent(
-        formData.name
-      )}&body=${encodeURIComponent(
-        `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-      )}`;
+      const result = await emailjs.send(
+        "service_f81jbxg",
+        "template_mr0z9pm",
+        {
+          from_name: formData.name,
+          reply_to: formData.email,
+          message: formData.message,
+          to_email: "yashaswanyashu@gmail.com",
+        },
+        "6-EdD1zlRqZuxZjnW"
+      );
 
-      window.open(mailtoLink, "_blank");
-
-      // For a production app, you would typically use an API endpoint like:
-      // await fetch('/api/send-email', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
-
+      console.log("Email sent:", result.text);
       setSubmitStatus("success");
-      // Reset form after successful submission
-      setFormData((prev) => ({
-        ...prev,
-        email: "",
-        message: "",
-      }));
 
-      // Keep the name as user's username
-      if (user?.username) {
-        setFormData((prev) => ({
-          ...prev,
-          name: user.username,
-        }));
-      }
+      setFormData({
+        name: user?.username || "",
+        email: user?.email || "",
+        message: "",
+      });
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("EmailJS error:", error);
+      setErrorMessage("Failed to send message. Please try again later.");
       setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
-
-      // Clear status after 5 seconds
-      setTimeout(() => {
-        setSubmitStatus(null);
-      }, 5000);
     }
   };
 
@@ -167,7 +152,7 @@ export default function ContactPage() {
             <CardHeader>
               <CardTitle className="text-gray-800">Send us a Message</CardTitle>
               <CardDescription className="text-gray-600">
-                {isLoggedIn
+                {isAuthenticated
                   ? "Fill out the form below and we'll get back to you as soon as possible"
                   : "Please log in to send us a message"}
               </CardDescription>
@@ -181,7 +166,7 @@ export default function ContactPage() {
                   <Input
                     id="name"
                     placeholder={
-                      isLoggedIn
+                      isAuthenticated
                         ? user?.username || "Enter your name"
                         : "Log in to continue"
                     }
@@ -189,7 +174,7 @@ export default function ContactPage() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    disabled={!isLoggedIn}
+                    disabled={!isAuthenticated}
                   />
                 </div>
                 <div className="space-y-2">
@@ -200,13 +185,15 @@ export default function ContactPage() {
                     id="email"
                     type="email"
                     placeholder={
-                      isLoggedIn ? "Enter your email" : "Log in to continue"
+                      isAuthenticated
+                        ? user?.email || "Enter your email"
+                        : "Log in to continue"
                     }
                     className="bg-white text-gray-800 border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    disabled={!isLoggedIn}
+                    disabled={!isAuthenticated}
                   />
                 </div>
                 <div className="space-y-2">
@@ -219,7 +206,7 @@ export default function ContactPage() {
                   <Textarea
                     id="message"
                     placeholder={
-                      isLoggedIn
+                      isAuthenticated
                         ? "Type your message here"
                         : "Log in to continue"
                     }
@@ -227,7 +214,7 @@ export default function ContactPage() {
                     value={formData.message}
                     onChange={handleChange}
                     required
-                    disabled={!isLoggedIn}
+                    disabled={!isAuthenticated}
                   />
                 </div>
 
@@ -241,11 +228,14 @@ export default function ContactPage() {
                 {submitStatus === "error" && (
                   <div className="flex items-center gap-2 text-red-600 bg-red-50 p-2 rounded">
                     <AlertCircle className="h-5 w-5" />
-                    <p>Please fill all required fields.</p>
+                    <p>
+                      {errorMessage ||
+                        "Please fill all required fields correctly."}
+                    </p>
                   </div>
                 )}
 
-                {isLoggedIn ? (
+                {isAuthenticated ? (
                   <Button
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"

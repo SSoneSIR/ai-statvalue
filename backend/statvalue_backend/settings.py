@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'authentication',
     'rest_framework',
     'corsheaders',
+    'comparison'
 ]
 
 MIDDLEWARE = [
@@ -40,7 +41,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  
 ]
 
-ROOT_URLCONF = 'backend.urls'
+ROOT_URLCONF = 'statvalue_backend.urls'
 
 TEMPLATES = [
     {
@@ -59,7 +60,7 @@ TEMPLATES = [
 ]
 
 
-WSGI_APPLICATION = 'backend.wsgi.application'
+WSGI_APPLICATION = 'statvalue_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
@@ -97,6 +98,9 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+SESSION_ENGINE = "django.contrib.sessions.backends.file"
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
@@ -123,6 +127,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development, configure properly for production
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -131,5 +136,5 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 AUTH_USER_MODEL = 'authentication.CustomUser'
+

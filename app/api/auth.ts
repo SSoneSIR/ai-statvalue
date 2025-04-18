@@ -8,7 +8,7 @@ interface AuthError {
 
 interface AuthResponse {
   success: string
-}
+} 
 
 export const register = async (username: string, email: string, password: string, confirm_password: string): Promise<AuthResponse> => {
   try {

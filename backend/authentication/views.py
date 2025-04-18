@@ -1,64 +1,80 @@
-from rest_framework import status 
-from rest_framework.response import Response  
-from rest_framework.decorators import api_view
-from django.views.decorators.csrf import csrf_exempt
-
-from .serializers import RegisterSerializer
-from django.http import JsonResponse
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
+from django.urls import path
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import requests
+import json
+def home(request):
+    return HttpResponse("Welcome to the home page")
 
-@csrf_exempt
-@api_view(['POST'])
-def register_user(request):
-    if request.method == 'POST':
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {'message': 'User registered successfully'},
-                status=status.HTTP_201_CREATED
-            )
-        else:
-            return Response(
-                {'errors': serializer.errors}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-@api_view(['POST'])
-def login_user(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
+            user = serializer.save()
+            
+            # Generate token
+            refresh = RefreshToken.for_user(user)
+            token = str(refresh.access_token)
+            
+            return Response({
+                "message": "Registration successful",
+                "user": UserSerializer(user).data,
+                "token": token
+            }, status=status.HTTP_201_CREATED)
+        
+        # Return validation errors
+        return Response({
+            "message": "Registration failed",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-    user = authenticate(username=username, password=password)
+class LoginView(APIView):
+    permission_classes = [AllowAny]
 
-    if user is not None:
-        if user.is_staff:  # Check if user is admin
-            return Response(
-                {"message": "Admin login successful", "is_admin": True},
-                status=status.HTTP_200_OK
-            )
-        return Response(
-            {"message": "Login successful", "is_admin": False},
-            status=status.HTTP_200_OK
-        )
-    else:
-        return Response(
-            {"error": "Invalid credentials"},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            
+            user = authenticate(username=username, password=password)
+            
+            if user:
+                refresh = RefreshToken.for_user(user)
+                token = str(refresh.access_token)
+                
+                return Response({
+                    "message": "Login successful",
+                    "user": UserSerializer(user).data,
+                    "token": token
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                "message": "Invalid credentials"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        return Response({
+            "message": "Login failed",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-def home(request):
-    return JsonResponse({"message": "Welcome to StatValue AI Backend!"})
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "user": UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
 
 
-    
-@api_view(['GET'])
-def check_admin_status(request):
-    if request.user.is_authenticated:
-        return Response(
-            {"is_admin": request.user.is_staff},
-            status=status.HTTP_200_OK
-        )
-    return Response(
-        {"is_admin": False},
-        status=status.HTTP_401_UNAUTHORIZED
-    )

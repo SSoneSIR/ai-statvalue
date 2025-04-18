@@ -15,20 +15,35 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+
+// Create motion components using the newer API
+const MotionCard = motion(Card);
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm_password, setConfirmPassword] = useState("");
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirm_password: "",
+  });
   const [error, setError] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { register } = useAuth();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData({
+      ...formData,
+      [id === "confirm-password" ? "confirm_password" : id]: value,
+    });
+  };
 
   const validateForm = (): { [key: string]: string } => {
     const errors: { [key: string]: string } = {};
+    const { username, email, password, confirm_password } = formData;
 
     if (!username) errors.username = "Username is required";
     if (!email) errors.email = "Email is required";
@@ -59,33 +74,14 @@ export default function RegisterPage() {
     setError({});
 
     try {
-      const response = await fetch("http://localhost:8000/api/auth/register/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, confirm_password }),
-      });
-
-      const contentType = response.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        if (!response.ok) {
-          setError(
-            data.errors || { form: data.message || "Registration failed" }
-          );
-          toast.error(
-            data.message || "Registration failed. Please fix the issues."
-          );
-          return;
-        }
+      const { username, email, password, confirm_password } = formData;
+      await register(username, email, password, confirm_password);
+    } catch (err: any) {
+      if (err.errors) {
+        setError(err.errors);
       } else {
-        throw new Error("Unexpected response from server");
+        setError({ form: err.message || "Something went wrong!" });
       }
-
-      toast.success("Registration successful! Redirecting to login...");
-      setTimeout(() => router.push("/login"), 1500);
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred during registration.");
-      setError({ form: error.message || "Something went wrong!" });
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +112,32 @@ export default function RegisterPage() {
     },
   };
 
-  const MotionCard = motion(Card);
+  const formFields = [
+    {
+      id: "username",
+      label: "Username",
+      type: "text",
+      value: formData.username,
+    },
+    {
+      id: "email",
+      label: "Email",
+      type: "email",
+      value: formData.email,
+    },
+    {
+      id: "password",
+      label: "Password",
+      type: "password",
+      value: formData.password,
+    },
+    {
+      id: "confirm-password",
+      label: "Confirm Password",
+      type: "password",
+      value: formData.confirm_password,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
@@ -135,8 +156,8 @@ export default function RegisterPage() {
               <Image
                 src="/register.png"
                 alt="Register illustration"
-                layout="fill"
-                objectFit="cover"
+                fill
+                className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
               />
@@ -152,45 +173,17 @@ export default function RegisterPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {[
-                    {
-                      id: "username",
-                      label: "Username",
-                      value: username,
-                      setter: setUsername,
-                    },
-                    {
-                      id: "email",
-                      label: "Email",
-                      value: email,
-                      setter: setEmail,
-                      type: "email",
-                    },
-                    {
-                      id: "password",
-                      label: "Password",
-                      value: password,
-                      setter: setPassword,
-                      type: "password",
-                    },
-                    {
-                      id: "confirm-password",
-                      label: "Confirm Password",
-                      value: confirm_password,
-                      setter: setConfirmPassword,
-                      type: "password",
-                    },
-                  ].map((field) => (
+                  {formFields.map((field) => (
                     <div key={field.id} className="space-y-2">
                       <Label htmlFor={field.id} className="text-gray-800">
                         {field.label}
                       </Label>
                       <Input
                         id={field.id}
-                        type={field.type || "text"}
+                        type={field.type}
                         placeholder={`Enter your ${field.label.toLowerCase()}`}
                         value={field.value}
-                        onChange={(e) => field.setter(e.target.value)}
+                        onChange={handleChange}
                         required
                         className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       />

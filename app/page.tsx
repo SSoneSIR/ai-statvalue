@@ -18,12 +18,24 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useAuth } from "../app/context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function Home() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   const handleLearnMore = (section: string) => {
     router.push(`/about?section=${section}`);
+  };
+
+  const handleAuthenticatedRoute = (route: string) => {
+    if (isAuthenticated) {
+      router.push(route);
+    } else {
+      toast.error("Please log in to access this feature");
+      setTimeout(() => router.push("/login"), 1500);
+    }
   };
 
   const containerVariants = {
@@ -63,7 +75,7 @@ export default function Home() {
         <div className="container mx-auto px-4 text-center">
           <motion.div variants={itemVariants} className="mb-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6">
-              AI-Powered Football Analytics
+              AI-Powe red Football Analytics
             </h1>
             <p className="text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">
               Compare players, predict market values, and discover similar
@@ -75,20 +87,23 @@ export default function Home() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row gap-4 justify-center mt-8"
           >
-            <Link href="/compare">
-              <button className="px-6 py-3 text-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-md">
-                <span className="flex items-center">
-                  Start Comparing <BarChart className="ml-2 h-5 w-5" />
-                </span>
-              </button>
-            </Link>
-            <Slot className="px-6 py-3 text-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-md">
-              <Link href="/predict">
-                <span className="flex items-center">
-                  Predict Values <TrendingUp className="ml-2 h-5 w-5" />
-                </span>
-              </Link>
-            </Slot>
+            <motion.button
+              onClick={() => handleAuthenticatedRoute("/compare")}
+              className="px-6 py-3 text-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-md"
+            >
+              <span className="flex items-center">
+                Start Comparing <BarChart className="ml-2 h-5 w-5" />
+              </span>
+            </motion.button>
+
+            <motion.button
+              onClick={() => handleAuthenticatedRoute("/predict")}
+              className="px-6 py-3 text-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-md"
+            >
+              <span className="flex items-center">
+                Predict Values <TrendingUp className="ml-2 h-5 w-5" />
+              </span>
+            </motion.button>
           </motion.div>
         </div>
       </motion.section>
