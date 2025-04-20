@@ -69,14 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Registration failed");
+        let errorMsg = "Registration failed";
+
+        if (data && typeof data === "object" && data.errors) {
+          errorMsg = Object.values(data.errors).flat().join(" | ");
+        }
+
+        toast.error(errorMsg);
+        return;
       }
 
       toast.success("Registration successful!");
       router.push("/login");
     } catch (error: any) {
-      toast.error(error.message || "Registration failed");
-      throw error;
+      console.error("Unexpected registration error:", error);
+      toast.error("Something went wrong. Please try again.");
     }
   };
 

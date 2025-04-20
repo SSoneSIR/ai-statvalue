@@ -185,16 +185,15 @@ export default function ComparePage() {
       setError(null);
       setSelectedPlayers([]);
       setComparisonResults([]);
-
       try {
         const position = selectedPosition.toLowerCase();
-        const response = await fetch(
-          `http://localhost:8000/api/comp/${position}s/`
-        );
+        const url = `/api/comp/${position}s/`; // Relative URL
+        const response = await fetch(url);
+
         if (!response.ok) {
-          throw new Error(
-            `HTTP error! Status: ${response.status} ${response.statusText}`
-          );
+          const errorData = await response.text();
+          console.error("API Error:", errorData);
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
         const data = await response.json();
@@ -257,19 +256,16 @@ export default function ComparePage() {
 
     try {
       // Make API call to compare players
-      const response = await fetch(
-        "http://localhost:8000/api/comp/compare-players/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            players: selectedPlayers.map((p) => p.name),
-            position: selectedPosition,
-          }),
-        }
-      );
+      const response = await fetch("/api/comp/compare-players/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          players: selectedPlayers.map((p) => p.name),
+          position: selectedPosition,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
@@ -307,11 +303,11 @@ export default function ComparePage() {
     // Clear previous chart
     chartContainerRef.current.innerHTML = "";
 
-    const chartColors = ["#4F46E5", "#10B981", "#8B5CF6", "#F97316"];
+    const chartColors = ["#4F46E5", "#F43F5E", "#8B5CF6", "#F97316"];
     const features = positionStats[selectedPosition as keyof PositionStats];
 
     // Setup chart dimensions
-    const margin = { top: 70, right: 100, bottom: 50, left: 100 };
+    const margin = { top: 80, right: 120, bottom: 50, left: 120 };
     const width = Math.min(
       700,
       chartContainerRef.current.offsetWidth - margin.left - margin.right
@@ -340,13 +336,34 @@ export default function ComparePage() {
     // Create circular grid lines with improved styling
     const ticks = [20, 40, 60, 80, 100];
 
+    // Add subtle gradient background
+    const radialGradient = svg
+      .append("defs")
+      .append("radialGradient")
+      .attr("id", "radar-background-gradient")
+      .attr("cx", "50%")
+      .attr("cy", "50%")
+      .attr("r", "50%");
+
+    radialGradient
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#f8fafc")
+      .attr("stop-opacity", 0.2);
+
+    radialGradient
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#f1f5f9")
+      .attr("stop-opacity", 0.7);
+
     // Add axis background for better readability
     svg
       .append("circle")
       .attr("cx", 0)
       .attr("cy", 0)
       .attr("r", radius)
-      .attr("fill", "#f8fafc")
+      .attr("fill", "url(#radar-background-gradient)")
       .attr("stroke", "#e2e8f0")
       .attr("stroke-width", 1);
 
@@ -453,7 +470,7 @@ export default function ComparePage() {
         .lineRadial<{ angle: number; radius: number }>()
         .angle((d) => d.angle)
         .radius((d) => d.radius)
-        .curve(d3.curveLinearClosed);
+        .curve(d3.curveCardinalClosed.tension(0.35));
 
       const radarData = dataPoints.map((d, i) => ({
         angle: angleSlice * i - Math.PI / 2,
@@ -468,7 +485,7 @@ export default function ComparePage() {
         .attr("fill", chartColors[index % chartColors.length])
         .attr("fill-opacity", 0.2)
         .attr("stroke", chartColors[index % chartColors.length])
-        .attr("stroke-width", 2)
+        .attr("stroke-width", 2.5)
         .attr("stroke-opacity", 0.8);
 
       // Add dots at each data point
@@ -479,11 +496,12 @@ export default function ComparePage() {
         .append("circle")
         .attr("cx", (d) => d.x)
         .attr("cy", (d) => d.y)
-        .attr("r", 4)
+        .attr("r", 5)
         .attr("fill", chartColors[index % chartColors.length])
         .attr("stroke", "#ffffff")
-        .attr("stroke-width", 1)
-        .append("title");
+        .attr("stroke-width", 1.5)
+        .append("title")
+        .text((d) => `${getStatDisplayName(d.stat)}: ${d.value.toFixed(1)}`);
     });
 
     // Add chart title
@@ -502,8 +520,8 @@ export default function ComparePage() {
       );
 
     // Add legend with improved styling
-    const legendItemHeight = 20;
-    const legendWidth = 150;
+    const legendItemHeight = 25; // Increased for squad/nation
+    const legendWidth = 200; // Wider to fit more content
     const legendStartY = -height / 2 + 15;
 
     const legend = svg
@@ -539,14 +557,29 @@ export default function ComparePage() {
         .attr("rx", 2)
         .attr("fill", chartColors[i % chartColors.length]);
 
+      // Player name (larger, bolder)
       legendRow
         .append("text")
         .attr("x", 24)
-        .attr("y", 12)
+        .attr("y", 10)
         .style("font-size", "13px")
-        .style("font-weight", "500")
+        .style("font-weight", "600")
         .style("fill", "#334155")
         .text(result.player.name);
+
+      // Squad & Nation (smaller, lighter)
+      legendRow
+        .append("text")
+        .attr("x", 24)
+        .attr("y", 22)
+        .style("font-size", "10px")
+        .style("font-weight", "400")
+        .style("fill", "#64748b")
+        .text(
+          `${result.player.Squad || "Unknown"} | ${
+            result.player.Nation || "Unknown"
+          }`
+        );
     });
   };
 
@@ -598,6 +631,7 @@ export default function ComparePage() {
     return statMap[stat] || stat;
   };
 
+  // Complete the getStatDescription function that's already started
   function getStatDescription(stat: string): import("react").ReactNode {
     const descriptions: { [key: string]: string } = {
       "aerwon%": "Percentage of aerial duels won by the player.",
@@ -702,7 +736,6 @@ export default function ComparePage() {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Player Search Input with Suggestions */}
               <div className="space-y-2 relative">
                 <Label
@@ -735,67 +768,76 @@ export default function ComparePage() {
                     </button>
                   )}
                 </div>
-
-                {/* Enhanced Dropdown for Player Suggestions */}
-                {isDropdownOpen && filteredPlayers.length > 0 && (
-                  <div
-                    ref={dropdownRef}
-                    className="absolute z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 w-full max-h-60 overflow-y-auto shadow-lg"
-                  >
-                    {filteredPlayers.map((player, index) => (
-                      <div
-                        key={index}
-                        className="p-2 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
-                        onClick={() => handleSelectPlayer(player)}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{player.name}</span>
-                          <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            <div className="flex items-center gap-1">
-                              <Flag className="h-3 w-3" />
-                              <span>{player.Nation}</span>
-                            </div>
-                            {player.Squad && (
-                              <div className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" />
-                                <span>{player.Squad}</span>
-                              </div>
-                            )}
+              </div>
+              {/* Enhanced player selection dropdown */}
+              {isDropdownOpen && filteredPlayers.length > 0 && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 w-full max-h-60 overflow-y-auto shadow-lg"
+                >
+                  {filteredPlayers.map((player, index) => (
+                    <div
+                      key={index}
+                      className="p-3 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
+                      onClick={() => handleSelectPlayer(player)}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium text-base">
+                          {player.name}
+                        </span>
+                        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <div className="flex items-center gap-1">
+                            <Flag className="h-3 w-3" />
+                            <span>{player.Nation || "Unknown"}</span>
                           </div>
+                          {player.Squad && (
+                            <div className="flex items-center gap-1">
+                              <Shield className="h-3 w-3" />
+                              <span>{player.Squad}</span>
+                            </div>
+                          )}
+                          {player.Comp && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{player.Comp}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Selected Players Display */}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Selected Players List */}
               <div className="space-y-2">
                 <Label className="font-medium text-indigo-600">
                   Selected Players ({selectedPlayers.length}/4)
                 </Label>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {selectedPlayers.length > 0 ? (
                     selectedPlayers.map((player, index) => (
                       <div
                         key={index}
                         className={`${getPlayerColor(
                           index
-                        )} px-4 py-2 rounded-lg flex flex-col gap-1 w-full`}
+                        )} px-4 py-3 rounded-lg flex flex-col gap-1 w-full shadow-sm hover:shadow-md transition-shadow duration-300`}
                       >
                         <div className="flex justify-between items-center">
-                          <span className="font-medium">{player.name}</span>
+                          <span className="font-semibold text-base">
+                            {player.name}
+                          </span>
                           <button
                             onClick={() => handleRemovePlayer(player.name)}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-500 hover:text-gray-700 rounded-full p-1 hover:bg-white hover:bg-opacity-25 transition-all"
+                            aria-label="Remove player"
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-3 text-xs opacity-80">
+                        <div className="flex items-center gap-3 text-xs opacity-80 mt-1">
                           <div className="flex items-center gap-1">
                             <Flag className="h-3 w-3" />
-                            <span>{player.Nation}</span>
+                            <span>{player.Nation || "Unknown"}</span>
                           </div>
                           {player.Squad && (
                             <div className="flex items-center gap-1">
@@ -804,18 +846,23 @@ export default function ComparePage() {
                             </div>
                           )}
                         </div>
+                        {player.Age && (
+                          <div className="text-xs opacity-70 mt-1">
+                            Age: {player.Age} · Apps: {player.MP || 0}
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-sm">No players selected</p>
+                    <p className="text-gray-500 text-sm italic px-2 py-3 bg-gray-50 rounded-md border border-gray-200">
+                      No players selected. Search and select players to compare.
+                    </p>
                   )}
                 </div>
               </div>
-
               {/* Loading and Error States */}
               {loading && <p className="text-indigo-500">Loading players...</p>}
               {error && <p className="text-red-500">{error}</p>}
-
               <Button
                 className="w-full bg-indigo-600 hover:bg-indigo-700 transition-colors mt-2"
                 disabled={selectedPlayers.length < 2 || isComparing}
