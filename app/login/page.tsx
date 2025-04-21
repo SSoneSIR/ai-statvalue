@@ -158,7 +158,7 @@ export default function LoginPage() {
                       value={formData.username}
                       onChange={handleChange}
                       required
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-black"
                     />
                     {error.username && (
                       <p className="text-red-500 text-sm">{error.username}</p>
@@ -175,7 +175,7 @@ export default function LoginPage() {
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
+                      className=" text-black border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10"
                     />
                     <button
                       type="button"

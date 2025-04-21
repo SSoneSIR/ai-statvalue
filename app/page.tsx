@@ -77,6 +77,7 @@ export default function Home() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6">
               AI-Powered Football Analytics
             </h1>
+
             <p className="text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">
               Compare players, predict market values, and discover similar
               talents using advanced AI and machine learning

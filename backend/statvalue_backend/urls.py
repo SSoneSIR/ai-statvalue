@@ -9,5 +9,5 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')),
     path("", home, name="home"),  # Add this line
     #path('api/auth/check-admin', check_admin_status),
-    path('api/comp/', include('comparison.urls')),
+    path('api/', include('comparison.urls')),
 ]

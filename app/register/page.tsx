@@ -312,7 +312,7 @@ export default function RegisterPage() {
                           value={field.value}
                           onChange={handleChange}
                           required
-                          className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10 ${
+                          className={`text-black border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10 ${
                             hasError
                               ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                               : ""

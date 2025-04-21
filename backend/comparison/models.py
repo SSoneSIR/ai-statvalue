@@ -1,95 +1,117 @@
 from djongo import models
 
-# Model for Midfielders collection
+# ============================================
+# Model for Midfielders
+# ============================================
 class Midfielders(models.Model):
-    player = models.CharField(max_length=100)
-    nation = models.CharField(max_length=100)
-    squad = models.CharField(max_length=100)
-    comp = models.CharField(max_length=100)
-    age = models.IntegerField()
-    born = models.DateField()
-    mp = models.IntegerField()
-    starts = models.IntegerField()
-    min = models.IntegerField()
-    ninety_s = models.FloatField()
-    recov = models.FloatField()  # New stat
-    pastotcmp = models.FloatField()  # New stat
-    pastotcmp_percentage = models.FloatField()  # New stat (percentage of past completions)
-    pasprog = models.FloatField()  # New stat
-    tklmid3rd = models.FloatField()  # New stat
-    carprog = models.FloatField()  # New stat
-    int = models.FloatField()  # New stat
+    player = models.CharField(max_length=100, db_column='Player')
+    nation = models.CharField(max_length=100, db_column='Nation')
+    position = models.CharField(max_length=100, db_column='Pos')
+    squad = models.CharField(max_length=100, db_column='Squad')
+    comp = models.CharField(max_length=100, db_column='Comp')
+    age = models.IntegerField(db_column='Age')
+    born = models.IntegerField(db_column='Born')
+    mp = models.IntegerField(db_column='MP')
+    starts = models.IntegerField(db_column='Starts')
+    min = models.IntegerField(db_column='Min')
+    ninety_s = models.FloatField(db_column='NinetyS')
+    recov = models.FloatField(db_column='Recov')  
+    pastotcmp = models.FloatField(db_column='PasTotCmp')  
+    pastotcmp_percentage = models.FloatField(db_column='PasTotCmpPerc')   
+    pasprog = models.FloatField(db_column='PasProg')  
+    tklmid3rd = models.FloatField(db_column='TklMid3rd')  
+    carprog = models.FloatField(db_column='CarProg')  
+    int = models.FloatField(db_column='Int')  
 
     class Meta:
         db_table = 'midfielders'
+        managed=False
+    def __str__(self):
+        return self.player
 
 
-# Model for Forwards collection
+# ============================================
+# Model for Forwards 
+# ============================================
 class Forwards(models.Model):
-    player = models.CharField(max_length=100)
-    nation = models.CharField(max_length=100)
-    squad = models.CharField(max_length=100)
-    comp = models.CharField(max_length=100)
-    age = models.IntegerField()
-    born = models.DateField()
-    mp = models.IntegerField()
-    starts = models.IntegerField()
-    min = models.IntegerField()
-    ninety_s = models.FloatField()
-    goals = models.IntegerField()  # New stat
-    sot = models.IntegerField()  # New stat
-    sot_percentage = models.FloatField()  # New stat (percentage of shots on target)
-    scash = models.FloatField()  # New stat
-    touattpen = models.IntegerField()  # New stat
-    assists = models.IntegerField()  # New stat
-    sca = models.FloatField()  # New stat
+    player = models.CharField(max_length=100, db_column='Player')
+    nation = models.CharField(max_length=100, db_column='Nation')
+    position = models.CharField(max_length=100, db_column='Pos')
+    squad = models.CharField(max_length=100, db_column='Squad')
+    comp = models.CharField(max_length=100, db_column='Comp')
+    age = models.IntegerField(db_column='Age')
+    born = models.IntegerField(db_column='Born')
+    mp = models.IntegerField(db_column='MP')
+    starts = models.IntegerField(db_column='Starts')
+    min = models.IntegerField(db_column='Min')
+    ninety_s = models.FloatField(db_column='NinetyS')
+    goals = models.IntegerField(db_column='Goals')  
+    sot = models.IntegerField(db_column='SoT')  
+    sot_percentage = models.FloatField(db_column='SoTPerc')    
+    scash = models.FloatField(db_column='ScaSh')  
+    touattpen = models.IntegerField(db_column='TouAttPen')  
+    assists = models.IntegerField(db_column='Assists')  
+    sca = models.FloatField(db_column='Sca')  
 
     class Meta:
         db_table = 'forwards'
+        managed = False
+    def __str__(self):
+        return self.player
 
-
-# Model for Defenders collection
+# ============================================
+# Model for Defenders
+# ============================================
 class Defenders(models.Model):
-    player = models.CharField(max_length=100)
-    nation = models.CharField(max_length=100)
-    squad = models.CharField(max_length=100)
-    comp = models.CharField(max_length=100)
-    age = models.IntegerField()
-    born = models.DateField()
-    mp = models.IntegerField()
-    starts = models.IntegerField()
-    min = models.IntegerField()
-    ninety_s = models.FloatField()
-    aerwon_percentage = models.FloatField()  # New stat (percentage of aerial duels won)
-    tklwon = models.IntegerField()  # New stat
-    clr = models.IntegerField()  # New stat
-    blksh = models.IntegerField()  # New stat
-    int = models.IntegerField()  # New stat
-    pasmedcmp = models.FloatField()  # New stat
-    pasmedcmp_percentage = models.FloatField()  # New stat (percentage of successful passes)
+    player = models.CharField(max_length=100, db_column='Player')
+    nation = models.CharField(max_length=100, db_column='Nation')
+    position = models.CharField(max_length=100, db_column='Pos')
+    squad = models.CharField(max_length=100, db_column='Squad')
+    comp = models.CharField(max_length=100, db_column='Comp')
+    age = models.IntegerField(db_column='Age')
+    born = models.IntegerField(db_column='Born')
+    mp = models.IntegerField(db_column='MP')
+    starts = models.IntegerField(db_column='Starts')
+    min = models.IntegerField(db_column='Min')
+    ninety_s = models.FloatField(db_column='NinetyS')
+    aerwon_percentage = models.FloatField(db_column='AerWonPerc')   
+    tklwon = models.IntegerField(db_column='TklWon')  
+    clr = models.IntegerField(db_column='Clr')  
+    blksh = models.IntegerField(db_column='BlkSh')  
+    int = models.IntegerField(db_column='Int')  
+    pasmedcmp = models.FloatField(db_column='PasMedCmp')  
+    pasmedcmp_percentage = models.FloatField(db_column='PasMedCmpPerc')    
 
     class Meta:
         db_table = 'defenders'
+        managed = False
+    def __str__(self):
+        return self.player
 
-
-# Model for Goalkeepers collection
+# ============================================
+# Model for Goalkeepers
+# ============================================
 class Goalkeepers(models.Model):
-    player = models.CharField(max_length=100)
-    nation = models.CharField(max_length=100)
-    squad = models.CharField(max_length=100)
-    comp = models.CharField(max_length=100)
-    age = models.IntegerField()
-    born = models.DateField()
-    mp = models.IntegerField()
-    starts = models.IntegerField()
-    min = models.IntegerField()
-    ninety_s = models.FloatField()
-    pastotcmp_percentage = models.FloatField()  # New stat (percentage of total passes completed)
-    pastotcmp = models.FloatField()  # New stat
-    err = models.IntegerField()  # New stat
-    save_percentage = models.FloatField()  # New stat (percentage of saves)
-    sweeper_actions = models.IntegerField()  # New stat
-    pas3rd = models.FloatField()  # New stat (passing into the 3rd of the field)
+    player = models.CharField(max_length=100, db_column='Player')
+    nation = models.CharField(max_length=100,db_column='Nation')
+    position = models.CharField(max_length=100, db_column='Pos')
+    squad = models.CharField(max_length=100, db_column='Squad')
+    comp = models.CharField(max_length=100, db_column='Comp')
+    age = models.IntegerField(db_column='Age')
+    born = models.IntegerField(db_column='Born')
+    mp = models.IntegerField(db_column='MP')
+    starts = models.IntegerField(db_column='Starts')
+    min = models.IntegerField(db_column='Min')
+    ninety_s = models.FloatField(db_column='NinetyS')
+    pastotcmp_percentage = models.FloatField(db_column='PasTotCmpPerc')    
+    pastotcmp = models.FloatField(db_column='PasTotCmp')  
+    err = models.IntegerField(db_column='Err')  
+    save_percentage = models.FloatField(db_column='SavePerc')  
+    sweeper_actions = models.IntegerField(db_column='SweeperActions')  
+    pas3rd = models.FloatField(db_column='Pas3rd')   
 
     class Meta:
         db_table = 'goalkeepers'
+        managed = False
+    def __str__(self):
+        return self.player

@@ -49,14 +49,14 @@ export default function PredictPage() {
                 <Label htmlFor="player-name" className=" text-black">
                   Player Name
                 </Label>
-                <Input id="player-name" placeholder="Search for a player..." />
+                <Input id="player-name" placeholder="Search for a player..." className="text-black" />
               </div>
               <div className="space-y-2 ">
                 <Label className="text-black">Year</Label>
                 <Select>
-                  <SelectTrigger>
+                    <SelectTrigger className="text-black">
                     <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
+                    </SelectTrigger>
                   <SelectContent className="bg-slate-800 text-white">
                     <SelectItem value="2026">2026</SelectItem>
                     <SelectItem value="2027">2027</SelectItem>

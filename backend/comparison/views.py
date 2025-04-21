@@ -1,503 +1,309 @@
-from django.shortcuts import render
 from django.http import JsonResponse
+from .models import Defenders, Forwards, Midfielders, Goalkeepers
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
 import json
-import numpy as np
-from .models import Midfielders, Forwards, Defenders, Goalkeepers
 
-def get_model_for_position(position):
-    model_map = {
-        'midfielder': Midfielders,
-        'forward': Forwards,
-        'defender': Defenders,
-        'goalkeeper': Goalkeepers,
-    }
-    return model_map.get(position.lower())
-
-def get_relevant_stats(position):
-    stats_map = {
-        'defender': ["aerwon_percentage", "tklwon", "clr", "blksh", "int", "pasmedcmp", "pasmedcmp_percentage"],
-        'forward': ["goals", "sot", "sot_percentage", "scash", "touattpen", "assists", "sca"],
-        'goalkeeper': ["pastotcmp_percentage", "pastotcmp", "err", "save_percentage", "sweeper_actions", "pas3rd"],
-        'midfielder': ["recov", "pastotcmp", "pastotcmp_percentage", "pasprog", "tklmid3rd", "carprog", "int"],
-    }
-    
-    # Map Django model field names to API response field names
-    field_map = {
-        'goals': 'goals',
-        'sot': 'sot',
-        'sot_percentage': 'sot%',
-        'scash': 'scash',
-        'touattpen': 'touattpen',
-        'assists': 'assists',
-        'sca': 'sca',
-        'aerwon_percentage': 'aerwon%',
-        'pasmedcmp_percentage': 'pasmedcmp%',
-        'pastotcmp_percentage': 'pastotcmp%',
-        'save_percentage': 'save %'
-    }
-    
-    stats = stats_map.get(position.lower(), [])
-    
-    # Return both model field names and API response field names
-    return [(stat, field_map.get(stat, stat)) for stat in stats]
-
-def normalize_stats(players_data, position):
-    """
-    Normalize player statistics on server side to scale from 0-100
-    """
-    # Get relevant stats for the position
-    relevant_stats = [stat_tuple[0] for stat_tuple in get_relevant_stats(position)]
-    
-    # Extract stats for normalization
-    stats_arrays = {}
-    for stat in relevant_stats:
-        stats_arrays[stat] = [getattr(player, stat, 0) if getattr(player, stat) is not None else 0 for player in players_data]
-    
-    # Create normalized data structure
-    normalized_players = []
-    
-    for i, player in enumerate(players_data):
-        normalized_stats = {}
-        
-        for stat in relevant_stats:
-            values = stats_arrays[stat]
-            max_value = max(values) if max(values) > 0 else 1
-            
-            # Normalize to 0-100 scale
-            normalized_value = (getattr(player, stat, 0) if getattr(player, stat) is not None else 0) / max_value * 100
-            normalized_stats[stat] = normalized_value
-            
-        normalized_players.append(normalized_stats)
-    
-    return normalized_players
-
-@api_view(['GET'])
-@csrf_exempt
-@permission_classes([AllowAny])
-def get_players_by_position(request, position):
-    """Generic function to get players by position"""
-    position = position.rstrip('s')  # Remove trailing 's' if present
-    model_class = get_model_for_position(position)
-    
-    if not model_class:
-        return JsonResponse({"error": f"Invalid position: {position}"}, status=400)
-    
-    try:
-        players = model_class.objects.all()
-        
-        players_with_data = []
-        for player in players:
-            player_data = {
-                "name": player.player,
-                "Nation": player.nation,
-                "Squad": player.squad,
-                "Comp": player.comp,
-                "Age": player.age,
-                "Born": player.born,
-                "MP": player.mp,
-                "Starts": player.starts,
-                "Min": player.min,
-                "NinetyS": player.ninety_s
-            }
-            players_with_data.append(player_data)
-        
-        return JsonResponse({"players": players_with_data})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-@api_view(['POST'])
-@csrf_exempt
-@permission_classes([AllowAny])
-def compare_players(request):
-    try:
-        data = json.loads(request.body)
-        player_names = data.get('players', [])
-        position = data.get('position', '')
-        
-        if not player_names or not position:
-            return JsonResponse({"error": "Missing required parameters"}, status=400)
-            
-        model_class = get_model_for_position(position)
-        if not model_class:
-            return JsonResponse({"error": f"Invalid position: {position}"}, status=400)
-            
-        relevant_stats = get_relevant_stats(position)
-        
-        # Retrieve all players at once for better efficiency
-        players_data = []
-        for player_name in player_names:
-            try:
-                player = model_class.objects.get(player=player_name)
-                players_data.append(player)
-            except model_class.DoesNotExist:
-                return JsonResponse({"error": f"Player not found: {player_name}"}, status=404)
-            
-        # Perform server-side normalization
-        normalized_stats = normalize_stats(players_data, position)
-        
-        results = []
-        for i, player in enumerate(players_data):
-            stats_data = {}
-            normalized_data = {}
-            
-            # Add each stat to the response with model field to API field name conversion
-            for j, (model_field, api_field) in enumerate(relevant_stats):
-                value = getattr(player, model_field, 0)
-                if value is None:
-                    value = 0
-                stats_data[api_field] = value
-                
-                # Add normalized value
-                normalized_data[api_field] = normalized_stats[i].get(model_field, 0)
-            
-            # Create player object with basic info
-            player_data = {
-                "name": player.player,
-                "Nation": player.nation,
-                "Squad": player.squad,
-                "Comp": player.comp,
-                "Age": player.age,
-                "Born": player.born,
-                "MP": player.mp,
-                "Starts": player.starts,
-                "Min": player.min,
-                "NinetyS": player.ninety_s
-            }
-            
-            results.append({
-                "player": player_data,
-                "stats": stats_data,
-                "normalizedStats": normalized_data
-            })
-        
-        return JsonResponse(results, safe=False)
-        
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-@api_view(['GET'])
-@csrf_exempt
-@permission_classes([AllowAny])
 def get_defenders(request):
-    return get_players_by_position(request, 'defender')
+    defenders = Defenders.objects.all()
+    data = [{'name': d.player,
+             'Nation': d.nation,
+             'Pos': d.position,
+             'Squad': d.squad,
+             'Comp': d.comp,
+             'Age': d.age,	
+             'Born': d.born,
+             'MP': d.mp,
+             'Starts': d.starts,
+             'Min': d.min,
+             'NinetyS': d.ninety_s,  
+             'AerWonPerc': d.aerwon_percentage,
+             'TklWon': d.tklwon,
+             'Clr': d.clr,
+             'BlkSh': d.blksh,
+             'Int': d.int,
+             'PasMedCmp': d.pasmedcmp,
+            'PasMedCmpPerc': d.pasmedcmp_percentage
+             } for d in defenders]   
+    return JsonResponse(data, safe=False)
 
-@api_view(['GET'])
-@csrf_exempt
-@permission_classes([AllowAny])
-def get_midfielders(request):
-    return get_players_by_position(request, 'midfielder')
-
-@api_view(['GET'])
-@csrf_exempt
-@permission_classes([AllowAny])
 def get_forwards(request):
-    return get_players_by_position(request, 'forward')
+    forwards = Forwards.objects.all()
+    data = [{'name': f.player,
+             'Nation': f.nation,
+             'Pos': f.position,
+             'Squad': f.squad,
+             'Comp': f.comp,
+             'Age': f.age,
+             'Born': f.born,
+             'MP': f.mp,
+             'Starts': f.starts,
+             'Min': f.min,
+             'NinetyS': f.ninety_s,
+             'Goals': f.goals,
+             'SoT': f.sot,
+             'SoTPerc': f.sot_percentage,
+             'ScaSh': f.scash,
+             'TouAttPen': f.touattpen,
+             'Assists': f.assists,
+             'Sca': f.sca
+                } for f in forwards]
+    return JsonResponse(data, safe=False)
 
-@api_view(['GET'])
-@csrf_exempt
-@permission_classes([AllowAny])
+def get_midfielders(request):
+    midfielders = Midfielders.objects.all()
+    data = [{'name': m.player,
+             'Nation': m.nation,
+             'Pos': m.position,
+             'Squad': m.squad,
+             'Comp': m.comp,
+             'Age': m.age,
+             'Born': m.born,
+             'MP': m.mp,
+             'Starts': m.starts,
+             'Min': m.min,
+             'NinetyS': m.ninety_s,
+             'Recovery':m.recov,
+             'PasTotCmp':m.pastotcmp,
+             'PasTotCmp_percentage':m.pastotcmp_percentage,
+             'PasProg':m.pasprog,
+             'TklMid3rd':m.tklmid3rd,
+             'CarProg':m.carprog,
+             'Int':m.int
+             } for m in midfielders]
+    
+    return JsonResponse(data, safe=False)
+
 def get_goalkeepers(request):
-    return get_players_by_position(request, 'goalkeeper')
+    goalkeepers = Goalkeepers.objects.all()
+    data = [{'name': g.player,
+             'Nation': g.nation,
+             'Pos': g.position,
+             'Squad': g.squad,
+             'Comp': g.comp,
+             'Age': g.age,
+             'Born': g.born,
+             'MP': g.mp,
+             'Starts': g.starts,
+             'Min': g.min,
+             'NinetyS': g.ninety_s,
+             'PasTotCmpPerc': g.pastotcmp_percentage, 
+             'PasTotCmp': g.pastotcmp,   
+             'Err': g.err,
+             'SavePerc': g.save_percentage,
+             'SweeperActions': g.sweeper_actions,
+             'Pas3rd': g.pas3rd,
+             } for g in goalkeepers]  
 
-# New functions for player search and UI-based comparison
+    return JsonResponse(data, safe=False)
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def search_players(request):
-    """
-    View to search for players across all position collections.
-    Returns player name, squad and nation as search results.
-    """
-    query = request.GET.get('query', '')
-    if not query or len(query) < 2:
-        return JsonResponse({'results': []})
-    
-    # Search players across all position collections
-    midfielders = Midfielders.objects.filter(player__icontains=query)[:10]
-    forwards = Forwards.objects.filter(player__icontains=query)[:10]
-    defenders = Defenders.objects.filter(player__icontains=query)[:10]
-    goalkeepers = Goalkeepers.objects.filter(player__icontains=query)[:10]
-    
-    results = []
-    
-    # Process midfielders
-    for player in midfielders:
-        results.append({
-            'name': player.player,
-            'squad': player.squad,
-            'nation': player.nation,
-            'position': 'midfielder',
-            'id': str(player.id)
+@csrf_exempt
+def compare_players(request):
+    if request.method == 'POST':
+        body = json.loads(request.body)
+        position = body.get('position')
+        players = body.get('players', [])
+
+        if not position or len(players) != 2:
+            return JsonResponse({'error': 'Position and two players must be specified.'}, status=400)
+
+        Model = {
+            'defender': Defenders,
+            'forward': Forwards,
+            'midfielder': Midfielders,
+            'goalkeeper': Goalkeepers,
+        }.get(position.lower())
+
+        if not Model:
+            return JsonResponse({'error': 'Invalid position.'}, status=400)
+
+        try:
+            player1 = Model.objects.get(player=players[0])
+            player2 = Model.objects.get(player=players[1])
+        except Model.DoesNotExist:
+            return JsonResponse({'error': 'One or both players not found.'}, status=404)
+
+        radar1 = map_stats_to_radar(player1, position)
+        radar2 = map_stats_to_radar(player2, position)
+
+        return JsonResponse({
+            'player1': {'name': player1.player, 'radar': radar1},
+            'player2': {'name': player2.player, 'radar': radar2},
         })
-    
-    # Process forwards
-    for player in forwards:
-        results.append({
-            'name': player.player,
-            'squad': player.squad,
-            'nation': player.nation,
-            'position': 'forward',
-            'id': str(player.id)
-        })
-    
-    # Process defenders
-    for player in defenders:
-        results.append({
-            'name': player.player,
-            'squad': player.squad,
-            'nation': player.nation,
-            'position': 'defender',
-            'id': str(player.id)
-        })
-    
-    # Process goalkeepers
-    for player in goalkeepers:
-        results.append({
-            'name': player.player,
-            'squad': player.squad,
-            'nation': player.nation,
-            'position': 'goalkeeper',
-            'id': str(player.id)
-        })
-    
-    return JsonResponse({'results': results})
+    else:
+        return JsonResponse({'error': 'POST method required.'}, status=405)
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def player_detail(request, position, player_id):
-    """
-    View to get detailed stats for a specific player.
-    """
-    try:
-        model_class = get_model_for_position(position)
-        if not model_class:
-            return JsonResponse({"error": f"Invalid position: {position}"}, status=400)
-            
-        player = model_class.objects.get(id=player_id)
-        relevant_stats = get_relevant_stats(position)
-        
-        # Get stats based on position
-        stats_data = {}
-        for model_field, api_field in relevant_stats:
-            value = getattr(player, model_field, 0)
-            if value is None:
-                value = 0
-            stats_data[api_field] = value
-        
-        # Create player object with basic info
-        player_data = {
-            "name": player.player,
-            "nation": player.nation,
-            "squad": player.squad,
-            "comp": player.comp,
-            "age": player.age,
-            "born": player.born.strftime('%Y-%m-%d') if player.born else None,
-            "mp": player.mp,
-            "starts": player.starts,
-            "min": player.min,
-            "ninety_s": player.ninety_s,
-            "position": position,
-            "stats": stats_data
-        }
-        
-        return JsonResponse(player_data)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=404)
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def compare_players_ui(request):
-    """
-    View to compare two players with radar chart data.
-    For UI-based comparison.
-    """
-    player1_position = request.GET.get('player1_position')
-    player1_id = request.GET.get('player1_id')
-    player2_position = request.GET.get('player2_position')
-    player2_id = request.GET.get('player2_id')
-    
-    if not all([player1_position, player1_id, player2_position, player2_id]):
-        return JsonResponse({'error': 'Missing required parameters'}, status=400)
-    
-    try:
-        # Get player 1 model and data
-        model1 = get_model_for_position(player1_position)
-        if not model1:
-            return JsonResponse({"error": f"Invalid position: {player1_position}"}, status=400)
-        player1 = model1.objects.get(id=player1_id)
-        
-        # Get player 2 model and data
-        model2 = get_model_for_position(player2_position)
-        if not model2:
-            return JsonResponse({"error": f"Invalid position: {player2_position}"}, status=400)
-        player2 = model2.objects.get(id=player2_id)
-        
-        # For radar chart, we need to map position-specific stats to common radar axes
-        # We'll use a simplified approach for visualization
-        
-        # Get relevant stats for each player
-        stats1 = get_relevant_stats(player1_position)
-        stats2 = get_relevant_stats(player2_position)
-        
-        # Get radar axes (use position-specific radar axes)
-        radar_axes = get_radar_axes(player1_position)
-        
-        # Map player stats to radar axes
-        player1_radar_data = map_stats_to_radar(player1, stats1, player1_position)
-        player2_radar_data = map_stats_to_radar(player2, stats2, player2_position)
-        
-        # Normalize radar data for both players together
-        normalized_radar_data = normalize_radar_data(player1_radar_data, player2_radar_data)
-        
-        result = {
-            'player1': {
-                'name': player1.player,
-                'squad': player1.squad,
-                'nation': player1.nation,
-                'position': player1_position,
-                'radarData': normalized_radar_data['player1']
-            },
-            'player2': {
-                'name': player2.player,
-                'squad': player2.squad,
-                'nation': player2.nation,
-                'position': player2_position,
-                'radarData': normalized_radar_data['player2']
-            },
-            'axes': radar_axes
-        }
-        
-        return JsonResponse(result)
-    
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=404)
-
-def get_radar_axes(position):
-    """
-    Returns the appropriate axes for radar chart based on position.
-    """
-    # Standard radar axes for different positions
-    axes_map = {
-        'midfielder': [
-            'Short%', 'Short-stopping', 'Deflections',
-            'Aerial', 'Exits', 'Passes', 'Long%'
-        ],
-        'forward': [
-            'Finishing', 'Dribbling', 'First Touch', 
-            'Movement', 'Passing', 'Decision Making', 'Work Rate'
-        ],
-        'defender': [
-            'Aerial', 'Tackling', 'Marking',
-            'Positioning', 'Passing', 'Interceptions', 'Clearances'
-        ],
-        'goalkeeper': [
-            'Shot-stopping', 'Aerial Command', 'Distribution',
-            'Sweeping', 'Positioning', 'Handling', 'Reflexes'
-        ]
-    }
-    
-    return axes_map.get(position.lower(), [])
-
-def map_stats_to_radar(player, stats, position):
-    """
-    Maps player stats to radar chart axes.
-    """
-    radar_data = {}
-    
-    if position == 'midfielder':
+def map_stats_to_radar(player, position):
+    if position == 'defender':
         radar_data = {
-            'Short%': getattr(player, 'pastotcmp_percentage', 0),
-            'Short-stopping': getattr(player, 'tklmid3rd', 0),
-            'Deflections': getattr(player, 'int', 0),
-            'Aerial': 50,  # Placeholder
-            'Exits': getattr(player, 'carprog', 0),
-            'Passes': getattr(player, 'pasprog', 0),
-            'Long%': getattr(player, 'pastotcmp', 0)
+            'Defensive Actions': getattr(player, 'tklplusint', 0),
+            'Interceptions': getattr(player, 'interceptions', 0),
+            'Clearances': getattr(player, 'clearances', 0),
+            'Aerial Duels Won': getattr(player, 'aerials_won', 0),
+            'Tackles': getattr(player, 'tackles', 0),
+            'Blocks': getattr(player, 'blocks', 0),
+            'Passing Accuracy': getattr(player, 'pastotcmp_percentage', 0)
         }
+
+    elif position == 'midfielder':
+        radar_data = {
+            'Passing Accuracy': getattr(player, 'pastotcmp_percentage', 0),
+            'Key Passes': getattr(player, 'key_passes', 0),
+            'Tackles': getattr(player, 'tackles', 0),
+            'Dribbles': getattr(player, 'dribbles', 0),
+            'Long Balls': getattr(player, 'long_balls', 0),
+            'Duels Won': getattr(player, 'duels_won', 0),
+            'Goals': getattr(player, 'goals', 0)
+        }
+
     elif position == 'forward':
         radar_data = {
-            'Finishing': getattr(player, 'goals', 0),
-            'Dribbling': getattr(player, 'touattpen', 0),
-            'First Touch': getattr(player, 'sca', 0),
-            'Movement': getattr(player, 'scash', 0),
-            'Passing': getattr(player, 'assists', 0),
-            'Decision Making': getattr(player, 'sot_percentage', 0),
-            'Work Rate': getattr(player, 'sot', 0)
+            'Goals': getattr(player, 'goals', 0),
+            'Shots on Target': getattr(player, 'shots_on_target', 0),
+            'Dribbles': getattr(player, 'dribbles', 0),
+            'Assists': getattr(player, 'assists', 0),
+            'Key Passes': getattr(player, 'key_passes', 0),
+            'Aerial Duels': getattr(player, 'aerials_won', 0),
+            'Offsides': getattr(player, 'offsides', 0)
         }
-    elif position == 'defender':
-        radar_data = {
-            'Aerial': getattr(player, 'aerwon_percentage', 0),
-            'Tackling': getattr(player, 'tklwon', 0),
-            'Marking': getattr(player, 'blksh', 0),
-            'Positioning': getattr(player, 'int', 0),
-            'Passing': getattr(player, 'pasmedcmp_percentage', 0),
-            'Interceptions': getattr(player, 'int', 0),
-            'Clearances': getattr(player, 'clr', 0)
-        }
+
     elif position == 'goalkeeper':
         radar_data = {
             'Shot-stopping': getattr(player, 'save_percentage', 0),
-            'Aerial Command': 50,  # Placeholder
+            'Aerial Command': 50,  # Replace with actual if available
             'Distribution': getattr(player, 'pastotcmp_percentage', 0),
             'Sweeping': getattr(player, 'sweeper_actions', 0),
-            'Positioning': 100 - getattr(player, 'err', 0) * 10,  # Inverted error stat
-            'Handling': getattr(player, 'pastotcmp', 0),
-            'Reflexes': getattr(player, 'pas3rd', 0) * 10
+            'Positioning': getattr(player, 'err', 0),
+            'Handling': getattr(player, 'pas3rd', 0),
+            'Reflexes': getattr(player, 'pastotcmp', 0)
         }
-        
+
+    else:
+        radar_data = {}
+
     return radar_data
 
-def normalize_radar_data(player1_data, player2_data):
-    """
-    Normalize radar data for visualization.
-    """
-    normalized_data = {
-        'player1': {},
-        'player2': {}
-    }
-    
-    # Get all axes
-    all_axes = list(set(list(player1_data.keys()) + list(player2_data.keys())))
-    
-    for axis in all_axes:
-        p1_value = player1_data.get(axis, 0)
-        p2_value = player2_data.get(axis, 0)
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from sklearn.neighbors import NearestNeighbors
+import joblib
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from .models import Defenders, Forwards, Midfielders, Goalkeepers
+
+def load_knn_model(position):
+    knn = joblib.load(f"knn_model_{position}.pkl")
+    scaler = joblib.load(f"scaler_{position}.pkl")
+    return knn, scaler
+
+@api_view(['POST'])
+def get_similar_players(request):
+    try:
+        # Get data from the request
+        data = request.data
+        player_data = data.get('player')
+        position = data.get('position').lower()  # forward, defender, midfielder, goalkeeper
         
-        # Find max value for normalization
-        max_value = max(p1_value, p2_value)
-        if max_value == 0:
-            max_value = 1  # Prevent division by zero
+        if not player_data or not position:
+            return JsonResponse({'error': 'Player data and position are required'}, status=400)
+        
+        print(f"Received request for similar players to {player_data.get('name')} who is a {position}")
+        
+        # Map position to model and features
+        position_model_map = {
+            'forward': (Forwards, ['goals', 'sot', 'sot_percentage', 'scash', 'touattpen', 'assists', 'sca']),
+            'defender': (Defenders, ['aerwon_percentage', 'tklwon', 'clr', 'blksh', 'int', 'pasmedcmp', 'pasmedcmp_percentage']),
+            'midfielder': (Midfielders, ['recov', 'pastotcmp', 'pastotcmp_percentage', 'pasprog', 'tklmid3rd', 'carprog', 'int']),
+            'goalkeeper': (Goalkeepers, ['pastotcmp_percentage', 'pastotcmp', 'err', 'save_percentage', 'sweeper_actions', 'pas3rd'])
+        }
+        
+        if position not in position_model_map:
+            return JsonResponse({'error': f"Invalid position: {position}"}, status=400)
             
-        # Normalize to 0-100 scale
-        normalized_data['player1'][axis] = min(100, (p1_value / max_value * 100))
-        normalized_data['player2'][axis] = min(100, (p2_value / max_value * 100))
-    
-    return normalized_data
+        Model, features = position_model_map[position]
+        
+        # Fetch all players of this position
+        all_players = list(Model.objects.all())
+        
+        # Find the reference player by name
+        player_name = player_data.get('name')
+        reference_player = None
+        
+        for player in all_players:
+            if player.player.lower() == player_name.lower():
+                reference_player = player
+                break
+        
+        if not reference_player:
+            return JsonResponse(
+                {'error': f"Player {player_name} not found in {position}s database"}, 
+                status=404
+            )
+            
+        # Calculate distances manually without KNN model
+        # First, get the reference player's stats
+        reference_stats = []
+        for feature in features:
+            # Convert feature names from camelCase to snake_case for database field access
+            db_field = feature.lower()
+            
+            # Special case for percentage fields that might have different names
+            if feature.endswith('Perc'):
+                db_field = feature.lower().replace('perc', '_percentage')
+                
+            value = getattr(reference_player, db_field, 0)
+            if value is None:
+                value = 0
+            reference_stats.append(float(value))
+        
+        # Calculate "distance" from reference player to all other players
+        similar_players_data = []
+        
+        for player in all_players:
+            # Skip the reference player itself
+            if player.player.lower() == player_name.lower():
+                continue
+                
+            # Get this player's stats
+            player_stats = []
+            for feature in features:
+                # Convert feature names to match database fields
+                db_field = feature.lower()
+                
+                # Special case for percentage fields
+                if feature.endswith('Perc'):
+                    db_field = feature.lower().replace('perc', '_percentage')
+                    
+                value = getattr(player, db_field, 0)
+                if value is None:
+                    value = 0
+                player_stats.append(float(value))
+            
+            # Calculate Euclidean distance
+            squared_diff_sum = sum((a - b) ** 2 for a, b in zip(reference_stats, player_stats))
+            distance = squared_diff_sum ** 0.5
+            
+            # Create player data object
+            player_data = {
+                'name': player.player,
+                'stats': {},
+                'distance': distance
+            }
+            
+            # Fill in stats dictionary
+            for i, feature in enumerate(features):
+                player_data['stats'][feature] = player_stats[i]
+                
+            similar_players_data.append(player_data)
+        
+        # Sort by similarity (lower distance means more similar)
+        similar_players_data.sort(key=lambda x: x['distance'])
+        
+        # Return top 5 most similar players
+        return JsonResponse({'similar_players': similar_players_data[:5]}, status=200)
 
-def player_search_page(request):
-    """
-    Renders the player search page.
-    """
-    return render(request, 'player_search.html')
-
-def player_comparison_page(request):
-    """
-    Renders the player comparison page.
-    """
-    player1_id = request.GET.get('player1_id')
-    player1_position = request.GET.get('player1_position')
-    player2_id = request.GET.get('player2_id')
-    player2_position = request.GET.get('player2_position')
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({'error': str(e)}, status=400)
     
-    context = {
-        'player1_id': player1_id,
-        'player1_position': player1_position,
-        'player2_id': player2_id,
-        'player2_position': player2_position
-    }
-    
-    return render(request, 'player_comparison.html', context)
