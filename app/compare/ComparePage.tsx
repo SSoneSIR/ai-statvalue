@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { Button } from "../../components/ui/button"; // Add Button import
+import { Button } from "../../components/ui/button";
 
 import { X, Flag, Calendar, Info, User, Shield, PieChart, UserPlus } from "lucide-react";
 import {
@@ -449,204 +449,254 @@ export default function ComparePage() {
         </div>
 
         <div className="grid gap-6 w-full lg:grid-cols-3">
-          {/* Left Card: Player Selection */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-indigo-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl text-indigo-600 flex items-center">
-                <User className="h-5 w-5 mr-2" />
-                Select Players
-              </CardTitle>
-              <CardDescription className="text-black">
-                Choose players to compare statistics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Position Selection Dropdown */}
-              <div className="space-y-2">
-                <Label className="font-medium text-indigo-600">
-                  Player Position
-                </Label>
-                <Select
-                  value={selectedPosition}
-                  onValueChange={(value: "defender" | "forward" | "goalkeeper" | "midfielder") => {
-                      setSelectedPosition(value);
-                    }}
-                >
-                  <SelectTrigger className="focus:ring-2 bg-black focus:ring-indigo-500 focus:border-indigo-500 transition-all text-yellow-500 hover:bg-slate-600">
-                    <SelectValue
-                      placeholder="Select position"
-                      className="bg-slate-600"
+          {/* Left Column: Player Selection and Similar Players */}
+          <div className="space-y-6">
+            {/* Player Selection Card */}
+            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-indigo-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl text-indigo-600 flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Select Players
+                </CardTitle>
+                <CardDescription className="text-black">
+                  Choose players to compare statistics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Position Selection Dropdown */}
+                <div className="space-y-2">
+                  <Label className="font-medium text-indigo-600">
+                    Player Position
+                  </Label>
+                  <Select
+                    value={selectedPosition}
+                    onValueChange={(value: "defender" | "forward" | "goalkeeper" | "midfielder") => {
+                        setSelectedPosition(value);
+                      }}
+                  >
+                    <SelectTrigger className="focus:ring-2 bg-black focus:ring-indigo-500 focus:border-indigo-500 transition-all text-yellow-500 hover:bg-slate-600">
+                      <SelectValue
+                        placeholder="Select position"
+                        className="bg-slate-600"
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-600">
+                      <SelectItem
+                        value="midfielder"
+                        className="text-yellow-500 hover:bg-yellow-100"
+                      >
+                        Midfielder
+                      </SelectItem>
+                      <SelectItem
+                        value="goalkeeper"
+                        className="text-yellow-500 hover:bg-yellow-100"
+                      >
+                        Goalkeeper
+                      </SelectItem>
+                      <SelectItem
+                        value="forward"
+                        className="text-yellow-500 hover:bg-yellow-100"
+                      >
+                        Forward
+                      </SelectItem>
+                      <SelectItem
+                        value="defender"
+                        className="text-yellow-500 hover:bg-yellow-100"
+                      >
+                        Defender
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Player Search Input with Suggestions */}
+                <div className="space-y-2 relative">
+                  <Label
+                    htmlFor="player-name"
+                    className="font-medium text-indigo-600"
+                  >
+                    Player Name
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="player-name"
+                      ref={inputRef}
+                      placeholder="Search for a player..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-8"
+                      onFocus={() => {
+                        if (search && filteredPlayers.length > 0) {
+                          setIsDropdownOpen(true);
+                        }
+                      }}
                     />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-600">
-                    <SelectItem
-                      value="midfielder"
-                      className="text-yellow-500 hover:bg-yellow-100"
-                    >
-                      Midfielder
-                    </SelectItem>
-                    <SelectItem
-                      value="goalkeeper"
-                      className="text-yellow-500 hover:bg-yellow-100"
-                    >
-                      Goalkeeper
-                    </SelectItem>
-                    <SelectItem
-                      value="forward"
-                      className="text-yellow-500 hover:bg-yellow-100"
-                    >
-                      Forward
-                    </SelectItem>
-                    <SelectItem
-                      value="defender"
-                      className="text-yellow-500 hover:bg-yellow-100"
-                    >
-                      Defender
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Player Search Input with Suggestions */}
-              <div className="space-y-2 relative">
-                <Label
-                  htmlFor="player-name"
-                  className="font-medium text-indigo-600"
-                >
-                  Player Name
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="player-name"
-                    ref={inputRef}
-                    placeholder="Search for a player..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-8"
-                    onFocus={() => {
-                      if (search && filteredPlayers.length > 0) {
-                        setIsDropdownOpen(true);
-                      }
-                    }}
-                  />
-                  {search && (
-                    <button
-                      onClick={clearSearch}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      aria-label="Clear search"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                    {search && (
+                      <button
+                        onClick={clearSearch}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Enhanced player selection dropdown */}
-              {isDropdownOpen && filteredPlayers.length > 0 && (
-                <div
-                  ref={dropdownRef}
-                  className="absolute z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 w-full max-h-60 overflow-y-auto shadow-lg"
-                >
-                  {filteredPlayers.map((player, index) => (
-                    <div
-                      key={index}
-                      className="p-3 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
-                      onClick={() => handleSelectPlayer(player)}
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium text-base">
-                          {player.name}
-                        </span>
-                        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          <div className="flex items-center gap-1">
-                            <Flag className="h-3 w-3" />
-                            <span>{player.Nation || "Unknown"}</span>
-                          </div>
-                          {player.Squad && (
-                            <div className="flex items-center gap-1">
-                              <Shield className="h-3 w-3" />
-                              <span>{player.Squad}</span>
-                            </div>
-                          )}
-                          {player.Comp && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{player.Comp}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Selected Players List */}
-              <div className="mt-4">
-                <Label className="font-medium text-indigo-600">
-                  Selected Players ({selectedPlayers.length}/4)
-                </Label>
-                <div className="mt-2 space-y-2">
-                  {selectedPlayers.length === 0 ? (
-                    <p className="text-sm text-gray-500">
-                      No players selected yet
-                    </p>
-                  ) : (
-                    selectedPlayers.map((player, index) => (
+                {/* Enhanced player selection dropdown */}
+                {isDropdownOpen && filteredPlayers.length > 0 && (
+                  <div
+                    ref={dropdownRef}
+                    className="absolute z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 w-full max-h-60 overflow-y-auto shadow-lg"
+                  >
+                    {filteredPlayers.map((player, index) => (
                       <div
                         key={index}
-                        className={`px-3 py-2 rounded-md flex justify-between items-center ${getPlayerColor(
-                          index
-                        )}`}
+                        className="p-3 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
+                        onClick={() => handleSelectPlayer(player)}
                       >
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-base">
                             {player.name}
                           </span>
-                          <span className="ml-2 text-xs opacity-75">
-                            {player.Nation}
+                          <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Flag className="h-3 w-3" />
+                              <span>{player.Nation || "Unknown"}</span>
+                            </div>
+                            {player.Squad && (
+                              <div className="flex items-center gap-1">
+                                <Shield className="h-3 w-3" />
+                                <span>{player.Squad}</span>
+                              </div>
+                            )}
+                            {player.Comp && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{player.Comp}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected Players List */}
+                <div className="mt-4">
+                  <Label className="font-medium text-indigo-600">
+                    Selected Players ({selectedPlayers.length}/4)
+                  </Label>
+                  <div className="mt-2 space-y-2">
+                    {selectedPlayers.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        No players selected yet
+                      </p>
+                    ) : (
+                      selectedPlayers.map((player, index) => (
+                        <div
+                          key={index}
+                          className={`px-3 py-2 rounded-md flex justify-between items-center ${getPlayerColor(
+                            index
+                          )}`}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium">
+                              {player.name}
+                            </span>
+                            <span className="ml-2 text-xs opacity-75">
+                              {player.Nation}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleRemovePlayer(player.name)}
+                            className="text-gray-700 hover:text-gray-900 transition-colors"
+                            aria-label={`Remove ${player.name}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Find Similar Players Button */}
+                {selectedPlayers.length > 0 && (
+                  <Button 
+                    onClick={fetchSimilarPlayers}
+                    disabled={loadingSimilar || selectedPlayers.length === 0}
+                    className="bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center w-full"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {loadingSimilar ? 'Finding Similar Players...' : 'Find Similar Players'}
+                  </Button>
+                )}
+                
+                {/* Error Message */}
+                {error && (
+                  <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm mt-2">
+                    {error}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Similar Players Card - Moved to left column */}
+            {similarPlayers.length > 0 && (
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-yellow-500">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl text-yellow-600 flex items-center">
+                    <UserPlus className="h-5 w-5 mr-2" />
+                    Similar Players
+                  </CardTitle>
+                  <CardDescription className="text-black">
+                    Players similar to {selectedPlayers[0]?.name}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {similarPlayers.map((player, index) => (
+                      <div
+                        key={index}
+                        className={`px-3 py-2 rounded-md flex justify-between items-center ${
+                          index === 0 ? "bg-yellow-50 border border-yellow-200" : "bg-gray-50 border border-gray-200"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-black">
+                            {player.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Similarity: {(100 - player.distance).toFixed(1)}%
                           </span>
                         </div>
                         <button
-                          onClick={() => handleRemovePlayer(player.name)}
-                          className="text-gray-700 hover:text-gray-900 transition-colors"
-                          aria-label={`Remove ${player.name}`}
+                          onClick={() => {
+                            // Find this player in the full players list and add to selection
+                            const playerToAdd = players.find(p => p.name === player.name);
+                            if (playerToAdd) handleSelectPlayer(playerToAdd);
+                          }}
+                          className="text-purple-600 hover:text-purple-800 transition-colors"
+                          aria-label={`Add ${player.name}`}
+                          disabled={selectedPlayers.some(p => p.name === player.name)}
                         >
-                          <X className="h-4 w-4" />
+                          {selectedPlayers.some(p => p.name === player.name) ? (
+                            <span className="text-xs">Selected</span>
+                          ) : (
+                            <UserPlus className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-2 mt-6">
-                {selectedPlayers.length > 0 && (
-                  <>
-                    {/* Similar Players Button */}
-                    <Button 
-                      onClick={fetchSimilarPlayers}
-                      disabled={loadingSimilar || selectedPlayers.length === 0}
-                      className="bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      {loadingSimilar ? 'Finding Similar Players...' : 'Find Similar Players'}
-                    </Button>
-                  </>
-                )}
-              </div>
-              
-              {/* Error Message */}
-              {error && (
-                <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm mt-2">
-                  {error}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Middle and Right Cards: Results Container */}
+          {/* Right Column: Visualization and Data */}
           <div className="lg:col-span-2 space-y-6">
             {/* Radar Chart with Legend at the top right */}
             <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-purple-500">
@@ -738,16 +788,16 @@ export default function ComparePage() {
               </Card>
             )}
 
-            {/* Similar Players Card */}
-            {similarPlayers.length > 0 && (
-              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-yellow-500">
+            {/* Stats Comparison Table - You can keep this here or remove it based on your needs */}
+            {comparisonResults.length > 0 && (
+              <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-t-2 border-t-blue-500">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xl text-yellow-600 flex items-center">
-                    <UserPlus className="h-5 w-5 mr-2" />
-                    Similar Players to {selectedPlayers[0]?.name}
+                  <CardTitle className="text-xl text-blue-600 flex items-center">
+                    <PieChart className="h-5 w-5 mr-2" />
+                    Position-Specific Stats
                   </CardTitle>
                   <CardDescription className="text-black">
-                    Players with similar statistical profiles ### use un-normalized data in table
+                    Key statistics for {selectedPosition}s
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -755,25 +805,29 @@ export default function ComparePage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-black font-bold">Player</TableHead>
-                          <TableHead className="text-black font-bold">Similarity Score</TableHead>
-                          {Object.keys(similarPlayers[0]?.stats || {}).slice(0, 5).map((stat, idx) => (
-                            <TableHead key={idx} className="text-black font-bold">{stat}</TableHead>
+                          <TableHead className="w-[180px] text-black font-bold">Stat</TableHead>
+                          {comparisonResults.map((result, index) => (
+                            <TableHead
+                              key={index}
+                              className={`text-center ${getPlayerColor(index)}`}
+                            >
+                              {result.player.name}
+                            </TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {similarPlayers.map((player, index) => (
-                          <TableRow key={index} className={index === 0 ? "bg-yellow-50" : ""}>
+                        {positionStats[selectedPosition as keyof PositionStats].map((stat, index) => (
+                          <TableRow key={index}>
                             <TableCell className="font-medium text-black">
-                              {player.name}
+                              {stat}
                             </TableCell>
-                            <TableCell className="text-black">
-                              {(100 - player.distance).toFixed(1)}%
-                            </TableCell>
-                            {Object.entries(player.stats).slice(0, 5).map(([stat, value], idx) => (
-                              <TableCell key={idx} className="text-black">
-                                {typeof value === 'number' ? value.toFixed(2) : value}
+                            {comparisonResults.map((result, playerIndex) => (
+                              <TableCell
+                                key={playerIndex}
+                                className="text-center text-black"
+                              >
+                                {formatValue(result.stats[stat])}
                               </TableCell>
                             ))}
                           </TableRow>
