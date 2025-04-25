@@ -376,21 +376,32 @@ def search_players(request):
 
 from .serializers import PlayerSerializer
 
-#@api_view(['GET'])
-#def get_players(request):
- #   """Return a list of players for the frontend search"""
-  #  players = PlayerStats.objects.all()
-   # serializer = PlayerSerializer(players, many=True)
-    #return Response(serializer.data)
-
-
-""" from .models import PlayerStats
-from django.http import JsonResponse
-
-def search_player(request):
-    query = request.GET.get('name')
-    if query:
-        players = PlayerStats.objects.filter(name__icontains=query, Year=2022)  # or latest year in DB
-        data = list(players.values())
-        return JsonResponse(data, safe=False)
-    return JsonResponse({'error': 'No name provided'}, status=400) """
+@csrf_exempt
+@require_http_methods(["GET"])
+def player_history(request, player_name):
+    """API endpoint to get player market value history"""
+    try:
+        # Load data if not already loaded
+        if not load_models_and_data():
+            return JsonResponse({"error": "Failed to load model and data"}, status=500)
+        
+        # Filter for the player and years from 2018 onwards
+        player_df = df[(df['name'] == player_name) & (df['Year'] >= 2018)].sort_values('Year')
+        
+        if len(player_df) == 0:
+            return JsonResponse({"error": f"No historical data found for player '{player_name}'"}, status=404)
+        
+        # Prepare data for JSON response
+        history_data = []
+        for _, row in player_df.iterrows():
+            history_data.append({
+                "year": int(row['Year']),
+                "marketValue": float(row['MV']),
+                "age": int(row['Age']) if 'Age' in row else None
+            })
+        
+        return JsonResponse(history_data, safe=False)
+    
+    except Exception as e:
+        logger.error(f"Error in player_history: {str(e)}")
+        return JsonResponse({"error": f"Failed to retrieve player history: {str(e)}"}, status=500)
