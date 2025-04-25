@@ -312,7 +312,7 @@ export default function ComparePage() {
         ...result,
         normalizedStats,
       };
-    });
+    }); 
   };
 
   // Function to handle player comparison

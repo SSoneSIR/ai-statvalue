@@ -40,13 +40,15 @@ coverage.xml
 nosetests.xml
 pytest_cache/
 pip-log.txt
-
+# Exclude models directory
+models/
 # Virtual Environments
 venv/
 env/
 ENV/
 .venv/
 .virtualenv/
+
 
 # === Next.js / React ===
 # Next.js build output
