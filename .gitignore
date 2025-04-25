@@ -41,7 +41,7 @@ nosetests.xml
 pytest_cache/
 pip-log.txt
 # Exclude models directory
-models/
+
 # Virtual Environments
 venv/
 env/
