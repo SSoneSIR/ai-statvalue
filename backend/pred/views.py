@@ -322,6 +322,13 @@ def predict_market_value(player_name, target_year):
 def generate_prediction(request):
     """API endpoint to generate player value prediction"""
     try:
+        if not load_models_and_data():
+            return JsonResponse({"error": "Models and data are still loading. Please try again in a moment."}, status=503)
+            
+        # Check if all required components are loaded
+        if model is None or df is None or feature_scaler is None or target_scaler is None or important_features is None:
+            return JsonResponse({"error": "Some model components are not yet loaded. Please try again in a moment."}, status=503)
+    
         # Parse JSON data from request
         data = json.loads(request.body)
         

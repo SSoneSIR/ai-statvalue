@@ -1,7 +1,7 @@
 from django.urls import path, include
 from django.contrib import admin
 from authentication.views import home  
-from comparison.views import get_midfielders, get_forwards, get_defenders, get_goalkeepers, compare_players
+from comparison.views import get_midfielders, get_forwards, get_defenders, get_goalkeepers, get_similar_players
 #from authentication.views import check_admin_status  
 
 urlpatterns = [

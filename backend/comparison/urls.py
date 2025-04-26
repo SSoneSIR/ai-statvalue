@@ -8,6 +8,4 @@ urlpatterns = [
     path('forwards/', views.get_forwards, name='get_forwards'),
     path('goalkeepers/', views.get_goalkeepers, name='get_goalkeepers'),
     path('similar_players/', views.get_similar_players, name='get_similar_players'),        
-    # API endpoint for player comparison
-    path('compare/', views.compare_players, name='compare_players'),
 ]
