@@ -510,78 +510,56 @@ export default function ComparePage() {
                 </div>
 
                 {/* Player Search Input with Suggestions */}
-                <div className="space-y-2 relative">
-                  <Label
-                    htmlFor="player-name"
-                    className="font-medium text-indigo-600"
-                  >
-                    Player Name
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="player-name"
-                      ref={inputRef}
-                      placeholder="Search for a player..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-8"
-                      onFocus={() => {
-                        if (search && filteredPlayers.length > 0) {
-                          setIsDropdownOpen(true);
-                        }
-                      }}
-                    />
-                    {search && (
-                      <button
-                        onClick={clearSearch}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                        aria-label="Clear search"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+<div className="space-y-2 relative">
+  <Label
+    htmlFor="player-name"
+    className="font-medium text-indigo-600"
+  >
+    Player Name
+  </Label>
+  <div className="relative w-full">
+    <Input
+      id="player-name"
+      ref={inputRef}
+      placeholder="Search for a player..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className="focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-all pr-8"
+      onFocus={() => {
+        if (search && filteredPlayers.length > 0) {
+          setIsDropdownOpen(true);
+        }
+      }}
+    />
+    {search && (
+      <button
+        onClick={clearSearch}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        aria-label="Clear search"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    )}
+    {isDropdownOpen && filteredPlayers.length > 0 && (
+      <div
+        ref={dropdownRef}
+        className="absolute left-0 right-0 z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg p-2"
+        >
+        {filteredPlayers.map((player, index) => (
+           <div
+           key={index}
+           className="p-2 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
+           onClick={() => handleSelectPlayer(player)}
+         >
+           <div className="font-medium">{player.name}</div>
+           <div className="text-sm text-gray-500 dark:text-gray-400">{player.club}</div>
+         </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
 
-                {/* Enhanced player selection dropdown */}
-                {isDropdownOpen && filteredPlayers.length > 0 && (
-                  <div
-                    ref={dropdownRef}
-                    className="absolute z-10 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-gray-700 rounded-md mt-1 w-full max-h-60 overflow-y-auto shadow-lg"
-                  >
-                    {filteredPlayers.map((player, index) => (
-                      <div
-                        key={index}
-                        className="p-3 hover:bg-indigo-50 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left border-b border-indigo-100 dark:border-gray-700 last:border-b-0"
-                        onClick={() => handleSelectPlayer(player)}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium text-base">
-                            {player.name}
-                          </span>
-                          <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            <div className="flex items-center gap-1">
-                              <Flag className="h-3 w-3" />
-                              <span>{player.Nation || "Unknown"}</span>
-                            </div>
-                            {player.Squad && (
-                              <div className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" />
-                                <span>{player.Squad}</span>
-                              </div>
-                            )}
-                            {player.Comp && (
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{player.Comp}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 {/* Selected Players List */}
                 <div className="mt-4">
