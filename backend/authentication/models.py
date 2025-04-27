@@ -1,24 +1,25 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.utils.translation import gettext_lazy as _
 import uuid
+from django.utils import timezone
+
 class CustomUser(AbstractUser):
+   
+    # Use UUID as primary key
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(_('email address'), unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    username = models.CharField(max_length=150, unique=True)
+
+    # Email field (AbstractUser already has username)
+    email = models.EmailField(unique=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
-
-    class Meta:
-        verbose_name = _('user')
-        verbose_name_plural = _('users')
-
+    
+    
     def __str__(self):
         return self.username
-
-    def save(self, *args, **kwargs):
-        # Fix for Djongo bug with update_fields
-        kwargs.pop("update_fields", None)
-        super().save(*args, **kwargs)
+    
+    class Meta:
+        verbose_name = 'User'
+        verbose_name_plural = 'Users'

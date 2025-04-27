@@ -11,6 +11,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import requests
 import json
+from django.contrib.auth import get_user_model
+User = get_user_model()
 def home(request):
     return HttpResponse("Welcome to the home page")
 
@@ -20,6 +22,19 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
+            data = request.data
+            username = data.get('username')
+            email = data.get('email')
+            password = data.get('password')
+            confirm_password = data.get('confirm_password')
+
+            if password != confirm_password:
+                return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(username=username).exists():
+                return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(email=email).exists():
+                return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
             user = serializer.save()
             
             # Generate token
@@ -60,7 +75,7 @@ class LoginView(APIView):
                 }, status=status.HTTP_200_OK)
             
             return Response({
-                "message": "Invalid credentials"
+                "message": "Invalid  username or password"
             }, status=status.HTTP_401_UNAUTHORIZED)
         
         return Response({

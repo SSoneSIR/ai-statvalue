@@ -3,25 +3,31 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
+from .models import CustomUser
 
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        max_length=150,
+        validators=[UniqueValidator(queryset=CustomUser.objects.all())]
+    )
+    email = serializers.EmailField(
+        validators=[UniqueValidator(queryset=CustomUser.objects.all())]
+    )
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'is_active']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True, required=True)
-    email = serializers.EmailField(
-        required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="That email is already registered")]
-    )
-    username = serializers.CharField(
-        required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="That username is already taken.")]
-    )
+    email = serializers.EmailField(required=True)
+    username = serializers.CharField(required=True)
+
 
     class Meta:
         model = User
