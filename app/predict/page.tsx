@@ -60,6 +60,7 @@
     const [historyLoading, setHistoryLoading] = useState(false);
     const [chartData, setChartData] = useState<PlayerHistoryEntry[]>([]);
     const searchRef = useRef<HTMLDivElement>(null);
+    const [authToken, setAuthToken] = useState('');
 
     useEffect(() => {
       const handler = (event: MouseEvent): void => {
@@ -70,13 +71,20 @@
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
     }, []);
-
+    useEffect(() => {
+      const storedToken = localStorage.getItem('authToken') || '';
+      setAuthToken(storedToken);
+    }, []);
     // Search players
     useEffect(() => {
       const handleSearch = async () => {
         if (searchTerm.length >= 1) {
           try {
-            const response = await fetch('http://localhost:8000/api/players/');
+            const response = await fetch('http://localhost:8000/api/players/', {
+              headers: {
+                'Authorization': `Bearer ${authToken}` // Add the auth token here
+              }
+            });
             
             if (!response.ok) {
               throw new Error(`HTTP error! Status: ${response.status}`);
@@ -109,7 +117,7 @@
       }, 300); // Debounce for 300ms
     
       return () => clearTimeout(timeoutId);
-    }, [searchTerm]);
+    }, [searchTerm, authToken]);
     
     // Fetch player history when a player is selected
     useEffect(() => {
@@ -120,7 +128,11 @@
         setError(null);
         
         try {
-          const response = await axios.get(`http://localhost:8000/api/player-history/${encodeURIComponent(selectedPlayer.name)}`);
+          const response = await axios.get(`http://localhost:8000/api/player-history/${encodeURIComponent(selectedPlayer.name)}`, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
           setPlayerHistory(response.data);
         } catch (err) {
           console.error("Error fetching player history:", err);

@@ -48,6 +48,10 @@ export const register = async (username: string, email: string, password: string
 export const login = async (username: string, password: string) => {
   try {
     const response = await axios.post(`${API_URL}login/`, { username, password });
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+    }
+    
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {

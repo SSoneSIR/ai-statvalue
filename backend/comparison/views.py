@@ -99,7 +99,8 @@ def get_goalkeepers(request):
 
 
 from django.http import JsonResponse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from sklearn.neighbors import NearestNeighbors
 import joblib
 import pandas as pd
@@ -112,6 +113,7 @@ def load_knn_model(position):
     return knn, scaler
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def get_similar_players(request):
     try:
         # Get data from the request

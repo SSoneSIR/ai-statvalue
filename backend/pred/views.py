@@ -1,7 +1,9 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 import json
 import numpy as np
 import pandas as pd
@@ -134,8 +136,9 @@ def load_models_and_data():
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def player_list(request):
-    """API endpoint to get list of all players"""
     try:
         # Load data if not already loaded
         if not load_models_and_data():
@@ -319,6 +322,8 @@ def predict_market_value(player_name, target_year):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def generate_prediction(request):
     """API endpoint to generate player value prediction"""
     try:
@@ -370,7 +375,9 @@ def generate_prediction(request):
         return JsonResponse({"error": f"Failed to generate prediction: {str(e)}"}, status=500)
 from .models import PlayerStats
 
+from rest_framework.permissions import AllowAny
 @api_view(['GET'])
+@permission_classes([AllowAny]) 
 def search_players(request):
     players = PlayerStats.objects.all()
     try:
@@ -385,6 +392,8 @@ from .serializers import PlayerSerializer
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def player_history(request, player_name):
     """API endpoint to get player market value history"""
     try:
