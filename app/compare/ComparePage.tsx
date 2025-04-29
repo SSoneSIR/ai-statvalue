@@ -225,7 +225,6 @@ export default function ComparePage() {
     inputRef.current?.focus();
   };
 
-  // Fetch players based on selected position
   useEffect(() => {
     const fetchPlayers = async () => {
       if (!selectedPosition) return;
@@ -237,7 +236,7 @@ export default function ComparePage() {
       setSimilarPlayers([]);
       try {
         const position = selectedPosition.toLowerCase();
-        const url = `http://localhost:8000/api/${position}s/`; // Use full URL
+        const url = `http://localhost:8000/api/${position}s/`; 
         console.log("Fetching players from:", url);
         const response = await fetch(url);
     
@@ -249,7 +248,6 @@ export default function ComparePage() {
         
         const data = await response.json();
         
-        // Transform data format to match what your component expects
         if (data && Array.isArray(data)) {
           setPlayers(data);
         } else {
@@ -396,28 +394,20 @@ export default function ComparePage() {
       setError("Please select a player first to find similar players");
       return;
     }
-
     setLoadingSimilar(true);
     setError(null);
-
     try {
-      // Use the first selected player as the reference
-      const referencePlayer = selectedPlayers[0];
-      
+      const referencePlayer = selectedPlayers[0];      
       console.log("Fetching similar players for:", referencePlayer.name);
-      
       const response = await axios.post('http://localhost:8000/api/similar_players/', {
         player: {
           name: referencePlayer.name,
-          // Include any other identifying information if needed
           Nation: referencePlayer.Nation,
           Squad: referencePlayer.Squad
         },
         position: selectedPosition
       });   
-
       console.log("Similar players response:", response.data);
-
       if (response.data && response.data.similar_players) {
         setSimilarPlayers(response.data.similar_players);
       } else {
@@ -559,8 +549,6 @@ export default function ComparePage() {
     )}
   </div>
 </div>
-
-
                 {/* Selected Players List */}
                 <div className="mt-4">
                   <Label className="font-medium text-indigo-600">

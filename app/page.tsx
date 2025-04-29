@@ -24,11 +24,9 @@ import toast from "react-hot-toast";
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-
   const handleLearnMore = (section: string) => {
     router.push(`/about?section=${section}`);
   };
-
   const handleAuthenticatedRoute = (route: string) => {
     if (isAuthenticated) {
       router.push(route);
@@ -37,7 +35,6 @@ export default function Home() {
       setTimeout(() => router.push("/login"), 1500);
     }
   };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -48,7 +45,6 @@ export default function Home() {
       },
     },
   };
-
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
@@ -225,32 +221,33 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <motion.section
-        className="py-16 bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-      >
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">
-            Ready to elevate your football analytics?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of scouts, analysts, and football enthusiasts who are
-            using StatValue AI to gain a competitive edge.
-          </p>
-          <Link href="/register">
+      {/* Call to Action - Only shown to non-authenticated users */}
+      {!isAuthenticated && (
+        <motion.section
+          className="py-16 bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+        >
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-3xl font-bold mb-6">
+              Ready to elevate your football analytics?
+            </h2>
+            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+              Join thousands of scouts, analysts, and football enthusiasts who are
+              using StatValue AI to gain a competitive edge.
+            </p>
             <Button
+              onClick={() => router.push("/register")}
               size="lg"
               className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Get Started Today
             </Button>
-          </Link>
-        </div>
-      </motion.section>
+          </div>
+        </motion.section>
+      )}
     </div>
   );
 }

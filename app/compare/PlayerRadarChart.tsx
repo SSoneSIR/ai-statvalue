@@ -233,13 +233,10 @@ const getStatDisplayName = (stat: string): string => {
     normalizedData.forEach((player, index) => {
       const legendRow = legend
         .append("g")
-        .attr("transform", `translate(0, ${index * 20})`);
-      
-     
+        .attr("transform", `translate(0, ${index * 20})`);     
     });
-    
   }, [players, position]);
-
+  
   return (
     <div className="w-full">
       <h3 className="text-lg font-semibold text-center mb-4 text-black">

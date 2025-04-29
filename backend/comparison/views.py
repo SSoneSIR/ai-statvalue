@@ -116,109 +116,67 @@ def load_knn_model(position):
 @permission_classes([AllowAny])
 def get_similar_players(request):
     try:
-        # Get data from the request
         data = request.data
         player_data = data.get('player')
-        position = data.get('position').lower()  # forward, defender, midfielder, goalkeeper
-        
+        position = data.get('position').lower() 
         if not player_data or not position:
             return JsonResponse({'error': 'Player data and position are required'}, status=400)
-        
         print(f"Received request for similar players to {player_data.get('name')} who is a {position}")
-        
-        # Map position to model and features
         position_model_map = {
             'forward': (Forwards, ['goals', 'sot', 'sot_percentage', 'scash', 'touattpen', 'assists', 'sca']),
             'defender': (Defenders, ['aerwon_percentage', 'tklwon', 'clr', 'blksh', 'int', 'pasmedcmp', 'pasmedcmp_percentage']),
             'midfielder': (Midfielders, ['recov', 'pastotcmp', 'pastotcmp_percentage', 'pasprog', 'tklmid3rd', 'carprog', 'int']),
             'goalkeeper': (Goalkeepers, ['pastotcmp_percentage', 'pastotcmp', 'err', 'save_percentage', 'sweeper_actions', 'pas3rd'])
         }
-        
         if position not in position_model_map:
-            return JsonResponse({'error': f"Invalid position: {position}"}, status=400)
-            
+            return JsonResponse({'error': f"Invalid position: {position}"}, status=400)   
         Model, features = position_model_map[position]
-        
-        # Fetch all players of this position
         all_players = list(Model.objects.all())
-        
-        # Find the reference player by name
         player_name = player_data.get('name')
         reference_player = None
-        
         for player in all_players:
             if player.player.lower() == player_name.lower():
                 reference_player = player
                 break
-        
         if not reference_player:
             return JsonResponse(
                 {'error': f"Player {player_name} not found in {position}s database"}, 
                 status=404
             )
-            
-        # Calculate distances manually without KNN model
-        # First, get the reference player's stats
         reference_stats = []
         for feature in features:
-            # Convert feature names from camelCase to snake_case for database field access
-            db_field = feature.lower()
-            
-            # Special case for percentage fields that might have different names
+            db_field = feature.lower()            
             if feature.endswith('Perc'):
                 db_field = feature.lower().replace('perc', '_percentage')
-                
             value = getattr(reference_player, db_field, 0)
             if value is None:
                 value = 0
-            reference_stats.append(float(value))
-        
-        # Calculate "distance" from reference player to all other players
+            reference_stats.append(float(value))        
         similar_players_data = []
-        
         for player in all_players:
-            # Skip the reference player itself
             if player.player.lower() == player_name.lower():
                 continue
-                
-            # Get this player's stats
             player_stats = []
             for feature in features:
-                # Convert feature names to match database fields
                 db_field = feature.lower()
-                
-                # Special case for percentage fields
                 if feature.endswith('Perc'):
                     db_field = feature.lower().replace('perc', '_percentage')
-                    
                 value = getattr(player, db_field, 0)
                 if value is None:
                     value = 0
                 player_stats.append(float(value))
-            
-            # Calculate Euclidean distance
             squared_diff_sum = sum((a - b) ** 2 for a, b in zip(reference_stats, player_stats))
             distance = squared_diff_sum ** 0.5
-            
-            # Create player data object
             player_data = {
                 'name': player.player,
                 'stats': {},
                 'distance': distance
             }
-            
-            # Fill in stats dictionary
             for i, feature in enumerate(features):
-                player_data['stats'][feature] = player_stats[i]
-                
+                player_data['stats'][feature] = player_stats[i]   
             similar_players_data.append(player_data)
-        
-        # Sort by similarity (lower distance means more similar)
         similar_players_data.sort(key=lambda x: x['distance'])
-        
-        # Return top 5 most similar players
         return JsonResponse({'similar_players': similar_players_data[:5]}, status=200)
-
     except Exception as e:
         import traceback
         print(traceback.format_exc())

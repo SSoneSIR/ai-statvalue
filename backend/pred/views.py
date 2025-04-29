@@ -29,18 +29,16 @@ df = None
 feature_scaler = None
 target_scaler = None    
 important_features = None
-lookback = 4  # Set based on your model requirements
+lookback = 4  
 
 def load_models_and_data():
     """Load the model, data, and scalers if not loaded"""
     global model, df, feature_scaler, target_scaler, important_features
     
     try:
-        # Only load if not already loaded
         if model is None:
             logger.info("Loading prediction model and data...")
             
-            # Load model and other components first
             if not os.path.exists(MODEL_PATH):
                 logger.error(f"Model file not found at {MODEL_PATH}")
                 return False
@@ -73,10 +71,8 @@ def load_models_and_data():
             df = pd.read_excel(DATASET_PATH)
             logger.info(f"Dataset loaded with {len(df)} records")
             
-            # Create derived features based on the collaborative notebook code
             logger.info("Creating derived features...")
             
-            # Make a copy of the player names
             df['player_name'] = df['name'].copy()
             
             # Enhanced Club Reputation - use both preset tiers and market values
@@ -101,8 +97,6 @@ def load_models_and_data():
                 # Fallback if we only have CR
                 df['ReputationIndex'] = df['CR']
                 
-            # Previous year market value - crucial for prediction
-            # Create lag features - previous year's MV
             df = df.sort_values(['player_name', 'Year'])
             df['PrevYearMV'] = df.groupby('player_name')['MV'].shift(1)
             df['MV_Trend'] = df['MV'] - df['PrevYearMV']  # Year-to-year change
@@ -120,7 +114,6 @@ def load_models_and_data():
             if missing_features:
                 logger.warning(f"Still missing features after derivation: {missing_features}")
                 
-                # For any still missing features, create placeholders with default values
                 for feature in missing_features:
                     logger.info(f"Creating placeholder for missing feature: {feature}")
                     df[feature] = 0.0
@@ -128,7 +121,7 @@ def load_models_and_data():
             logger.info("Successfully prepared all required features")
             return True
         else:
-            return True  # Already loaded
+            return True  
             
     except Exception as e:
         logger.error(f"Error loading models and data: {str(e)}")
@@ -140,7 +133,6 @@ def load_models_and_data():
 @permission_classes([IsAuthenticated])
 def player_list(request):
     try:
-        # Load data if not already loaded
         if not load_models_and_data():
             return JsonResponse({"error": "Failed to load model and data"}, status=500)
         
@@ -175,16 +167,15 @@ def predict_market_value(player_name, target_year):
         
         # Get the latest available data for this player
         latest_data = player_df.tail(lookback)
-        last_known_year = int(latest_data['Year'].iloc[-1])  # Convert to Python int
-        last_known_mv = float(latest_data['MV'].iloc[-1])    # Convert to Python float
-        last_known_age = int(latest_data['Age'].iloc[-1]) if 'Age' in latest_data.columns else None  # Convert to Python int
-        
+        last_known_year = int(latest_data['Year'].iloc[-1])  
+        last_known_mv = float(latest_data['MV'].iloc[-1])    
+        last_known_age = int(latest_data['Age'].iloc[-1]) if 'Age' in latest_data.columns else None        
         # Check if we have data that's before the target year
         if last_known_year >= target_year:
             # We already have data for this year, return the actual value
             year_data = player_df[player_df['Year'] == target_year]
             if not year_data.empty:
-                actual_mv = float(year_data['MV'].iloc[0])  # Convert to Python float
+                actual_mv = float(year_data['MV'].iloc[0])  
                 actual_age = int(year_data['Age'].iloc[0]) if 'Age' in year_data.columns else None
 
                 return {
@@ -197,36 +188,24 @@ def predict_market_value(player_name, target_year):
                     "projectedAge": actual_age
                 }
             else:
-                # We don't have the exact year but we have later years
                 return {"error": f"No data available for {player_name} in {target_year}, but we have more recent data"}
         
         # Project features for target year - this is critical for year-dependent predictions
         years_forward = target_year - last_known_year
         logger.info(f"Projecting {years_forward} years forward from {last_known_year} to {target_year}")
         
-        # Create a copy of the latest data for projection
         projected_data = latest_data.iloc[-1:].copy()
-        
-        # Update year-dependent features
         projected_data['Year'] = target_year
-        
-        # Update age if available
         if last_known_age is not None:
             projected_age = last_known_age + years_forward
             projected_data['Age'] = projected_age
-            logger.info(f"Projecting age from {last_known_age} to {projected_age}")
-            
-            # Update age-related features if they exist
+            logger.info(f"Projecting age from {last_known_age} to {projected_age}")            
             if 'Age_squared' in projected_data.columns:
                 projected_data['Age_squared'] = projected_age ** 2
-            
             if 'Years_from_peak' in projected_data.columns:
                 projected_data['Years_from_peak'] = abs(projected_age - 27)
-                
             if 'PeakAgeFactor' in projected_data.columns:
                 projected_data['PeakAgeFactor'] = 1 - abs(projected_age - 27) / 15
-                
-            # Update career phase if it exists
             if 'CareerPhase' in projected_data.columns:
                 if projected_age <= 21:
                     projected_data['CareerPhase'] = 'Rising'
@@ -248,74 +227,51 @@ def predict_market_value(player_name, target_year):
                     projected_data['CareerPhase'] = 'Veteran'
                     if 'CareerPhaseValue' in projected_data.columns:
                         projected_data['CareerPhaseValue'] = 1
-        
-        # Create a synthetic time sequence for prediction using projected data
-        X_input = latest_data[important_features].values
-        
-        # For the last timestep in the sequence, replace with projected data
-        # This helps the model see the trend into the future
+                X_input = latest_data[important_features].values
         for feature in important_features:
             if feature in projected_data.columns:
                 X_input[-1, list(important_features).index(feature)] = projected_data[feature].iloc[0]
-        
-        # Reshape and scale for prediction
-        X_reshaped = X_input.reshape(1, lookback, len(important_features))
-        
-        # Scale the features
+        # scaling
         X_scaled = np.zeros((1, lookback, len(important_features)))
         for i in range(lookback):
             X_scaled[0, i, :] = feature_scaler.transform(X_input[i].reshape(1, -1))
-        
-        # Make prediction
+        # predicting
         pred_scaled = model.predict(X_scaled)
-        predicted_value = float(target_scaler.inverse_transform(pred_scaled)[0][0])
-        
-        # Apply age-based adjustment for far-future predictions
+        predicted_value = float(target_scaler.inverse_transform(pred_scaled)[0][0])        
         if last_known_age is not None:
-            projected_age = last_known_age + years_forward
-            
-            # Value generally peaks and then declines after age 30
+            projected_age = last_known_age + years_forward            
             if projected_age > 30:
-                # Progressive decline with age after 30
                 age_factor = max(0.5, 1.0 - 0.05 * (projected_age - 30))
                 original_prediction = predicted_value
                 predicted_value = predicted_value * age_factor
                 logger.info(f"Applied age adjustment factor of {age_factor} for age {projected_age} "
-                           f"(original: {original_prediction:.2f}, adjusted: {predicted_value:.2f})")
-        
-        # Calculate confidence based on years forward
+                           f"(original: {original_prediction:.2f}, adjusted: {predicted_value:.2f})")        
         years_forward = target_year - last_known_year
         base_confidence = 0.9
-        confidence_penalty = min(0.4, 0.05 * years_forward)  # Reduce confidence for future predictions
-        
+        confidence_penalty = min(0.4, 0.05 * years_forward)  
         confidence_level = base_confidence - confidence_penalty
-        
-        # Convert to descriptive confidence level
         if confidence_level > 0.8:
             confidence_desc = "High"
         elif confidence_level > 0.6:
             confidence_desc = "Medium"
         else:
             confidence_desc = "Low"
-            
-        # Format the confidence descriptor
+
         confidence_text = f"{confidence_desc} ({int(confidence_level * 100)}%)"
         projected_age = None
         if last_known_age is not None:
             projected_age = last_known_age + years_forward
-        # Ensure all values are JSON serializable
         return {
             "playerName": player_name,
             "year": int(target_year),
             "predictedValue": round(predicted_value, 2),
             "currentValue": round(last_known_mv, 2),
             "confidenceLevel": confidence_text,
-            "yearsForward": int(years_forward),  # Convert to Python int
+            "yearsForward": int(years_forward),  
             "lastKnownYear": last_known_year,
             "lastKnownAge": last_known_age,
             "projectedAge": projected_age
         }
-        
     except Exception as e:
         logger.error(f"Error in predict_market_value: {str(e)}")
         return {"error": f"Prediction failed: {str(e)}"}
@@ -329,50 +285,33 @@ def generate_prediction(request):
     try:
         if not load_models_and_data():
             return JsonResponse({"error": "Models and data are still loading. Please try again in a moment."}, status=503)
-            
-        # Check if all required components are loaded
         if model is None or df is None or feature_scaler is None or target_scaler is None or important_features is None:
             return JsonResponse({"error": "Some model components are not yet loaded. Please try again in a moment."}, status=503)
-    
-        # Parse JSON data from request
         data = json.loads(request.body)
-        
-        # Validate required fields
         required_fields = ['playerName', 'year']
         for field in required_fields:
             if field not in data:
                 return JsonResponse({"error": f"Missing required field: {field}"}, status=400)
-        
-        # Extract data
         player_name = data['playerName']
         target_year = int(data['year'])
-        
-        # Validate year is in reasonable range
-        current_year = 2025  # Update as needed
+        current_year = 2025  
         if target_year < 2000 or target_year > current_year + 5:
             return JsonResponse({"error": f"Year must be between 2000 and {current_year + 5}"}, status=400)
-        
-        # Generate prediction
-        prediction = predict_market_value(player_name, target_year)
-        
-        # Check if prediction has error
+        prediction = predict_market_value(player_name, target_year)# Generate prediction
         if "error" in prediction:
             return JsonResponse({"error": prediction["error"]}, status=400)
-        
-        # Ensure all values are JSON serializable before returning
         for key, value in prediction.items():
             if isinstance(value, np.int64):
                 prediction[key] = int(value)
             elif isinstance(value, np.float64):
                 prediction[key] = float(value)
-        
         return JsonResponse(prediction)
-        
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON in request body"}, status=400)
     except Exception as e:
         logger.error(f"Error in generate_prediction: {str(e)}")
         return JsonResponse({"error": f"Failed to generate prediction: {str(e)}"}, status=500)
+    
 from .models import PlayerStats
 
 from rest_framework.permissions import AllowAny
@@ -388,7 +327,6 @@ def search_players(request):
         data = []
     return JsonResponse(data, safe=False)
 
-from .serializers import PlayerSerializer
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -401,13 +339,11 @@ def player_history(request, player_name):
         if not load_models_and_data():
             return JsonResponse({"error": "Failed to load model and data"}, status=500)
         
-        # Filter for the player and years from 2018 onwards
         player_df = df[(df['name'] == player_name) & (df['Year'] >= 2018)].sort_values('Year')
         
         if len(player_df) == 0:
             return JsonResponse({"error": f"No historical data found for player '{player_name}'"}, status=404)
         
-        # Prepare data for JSON response
         history_data = []
         for _, row in player_df.iterrows():
             history_data.append({
